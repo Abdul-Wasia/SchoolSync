@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Principal Dashboard - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Principal Dashboard</h1>
+        <p class="page-subtitle">School-wide analytics and insights</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-blue">
+        <div class="stat-icon"><i class="fas fa-user-graduate"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ stats.students }}</div>
+            <div class="stat-label">Active Students</div>
+        </div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ stats.teachers }}</div>
+            <div class="stat-label">Teachers</div>
+        </div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ stats.sections }}</div>
+            <div class="stat-label">Sections</div>
+        </div>
+    </div>
+    <div class="stat-card stat-purple">
+        <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ stats.attendance_pct }}%</div>
+            <div class="stat-label">Today's Attendance</div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('studentsTab', this)">
+        <i class="fas fa-user-graduate"></i> Students
+    </button>
+    <button class="tab-btn" onclick="showTab('teachersTab', this)">
+        <i class="fas fa-chalkboard-teacher"></i> Teachers
+    </button>
+    <button class="tab-btn" onclick="showTab('attendanceTrendTab', this)">
+        <i class="fas fa-chart-line"></i> Attendance Trend
+    </button>
+    <button class="tab-btn" onclick="showTab('sectionComparisonTab', this)">
+        <i class="fas fa-layer-group"></i> Section Comparison
+    </button>
+    <button class="tab-btn" onclick="showTab('subjectPerformanceTab', this)">
+        <i class="fas fa-book"></i> Subject Performance
+    </button>
+    <button class="tab-btn" onclick="showTab('lowAttendanceTab', this)">
+        <i class="fas fa-exclamation-triangle"></i> Low Attendance
+    </button>
+</div>
+
+<!-- Students Tab -->
+<div class="tab-content active" id="studentsTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>All Students</h3>
+            <span class="badge badge-primary">{{ all_students|length }} students</span>
+        </div>
+        <div class="card-body">
+            {% if all_students %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>System ID</th>
+                            <th>Roll No</th>
+                            <th>Grade</th>
+                            <th>Section</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in all_students %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ s.name }}</strong></td>
+                            <td><code>{{ s.student_system_id }}</code></td>
+                            <td>{{ s.roll_number }}</td>
+                            <td>{{ s.grade_name }}</td>
+                            <td>{{ s.section_name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-user-graduate"></i>
+                <p>No students registered yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Teachers Tab -->
+<div class="tab-content" id="teachersTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>All Teachers</h3>
+            <span class="badge badge-success">{{ all_teachers|length }} teachers</span>
+        </div>
+        <div class="card-body">
+            {% if all_teachers %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Subject</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in all_teachers %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ t.name }}</strong></td>
+                            <td>{{ t.subject or 'N/A' }}</td>
+                            <td>{{ t.phone or 'N/A' }}</td>
+                            <td>{{ t.email or 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <p>No teachers registered yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Trend Tab -->
+<div class="tab-content" id="attendanceTrendTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Daily Attendance Trend (Last 30 Days)</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="attendanceTrendChart" height="120"></canvas>
+            <script>
+            new Chart(document.getElementById('attendanceTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: {{ trend | map(attribute='date') | list | tojson }},
+                    datasets: [{
+                        label: 'Attendance %',
+                        data: {{ trend | map(attribute='pct') | list | tojson }},
+                        borderColor: '#2563EB',
+                        backgroundColor: 'rgba(37,99,235,0.1)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#2563EB',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.parsed.y + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0, max: 100,
+                            ticks: { callback: v => v + '%' },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            </script>
+        </div>
+    </div>
+</div>
+<div class="tab-content" id="attendanceTrendTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Daily Attendance Trend (Last 30 Days)</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="attendanceTrendChart" height="120"></canvas>
+            <script>
+            new Chart(document.getElementById('attendanceTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: {{ trend | map(attribute='date') | list | tojson }},
+                    datasets: [{
+                        label: 'Attendance %',
+                        data: {{ trend | map(attribute='pct') | list | tojson }},
+                        borderColor: '#2563EB',
+                        backgroundColor: 'rgba(37,99,235,0.1)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#2563EB',
+                        pointRadius: 4,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.parsed.y + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0, max: 100,
+                            ticks: { callback: v => v + '%' },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            </script>
+        </div>
+    </div>
+</div>        </div>
+        <div class="card">
+            <div class="card-header">
+                <h3>Teacher Attendance (Last 30 Days)</h3>
+            </div>
+            <div class="card-body">
+                {% if teachers %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Teacher</th>
+                                <th>Subject</th>
+                                <th>Present</th>
+                                <th>Absent</th>
+                                <th>Attendance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for teacher in teachers %}
+                            <tr>
+                                <td>{{ teacher.name }}</td>
+                                <td>{{ teacher.subject }}</td>
+                                <td>{{ teacher.present_days }}</td>
+                                <td>{{ teacher.absent_days }}</td>
+                                <td>
+                                    {% if teacher.attendance_pct is not none %}
+                                    <span class="badge badge-{{ 'success' if teacher.attendance_pct >= 75 else 'warning' if teacher.attendance_pct >= 60 else 'danger' }}">{{ teacher.attendance_pct }}%</span>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-user-check"></i>
+                    <p>No teacher attendance data</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section Comparison Tab -->
+<div class="tab-content" id="sectionComparisonTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Section Comparison (Last 30 Days)</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="sectionChart" height="120"></canvas>
+            <script>
+            const sectionLabels = {{ sections_data | map(attribute='section_name') | list | tojson }};
+            const sectionData   = {{ sections_data | map(attribute='avg_att') | list | tojson }};
+            new Chart(document.getElementById('sectionChart'), {
+                type: 'bar',
+                data: {
+                    labels: sectionLabels,
+                    datasets: [{
+                        label: 'Avg Attendance %',
+                        data: sectionData,
+                        backgroundColor: sectionData.map(v => v >= 75 ? 'rgba(22,163,74,0.8)' : v >= 60 ? 'rgba(217,119,6,0.8)' : 'rgba(220,38,38,0.8)',
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.parsed.y + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0, max: 100,
+                            ticks: { callback: v => v + '%' },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            </script>
+        </div>
+    </div>
+</div>
+<div class="tab-content" id="sectionComparisonTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Section Comparison (Last 30 Days)</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="sectionChart" height="120"></canvas>
+            <script>
+            const sectionLabels = {{ sections_data | map(attribute='section_name') | list | tojson }};
+            const sectionData   = {{ sections_data | map(attribute='avg_att') | list | tojson }};
+            new Chart(document.getElementById('sectionChart'), {
+                type: 'bar',
+                data: {
+                    labels: sectionLabels,
+                    datasets: [{
+                        label: 'Avg Attendance %',
+                        data: sectionData,
+                        backgroundColor: sectionData.map(v => v >= 75 ? 'rgba(22,163,74,0.8)' : v >= 60 ? 'rgba(217,119,6,0.8)' : 'rgba(220,38,38,0.8)',
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.parsed.y + '%'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0, max: 100,
+                            ticks: { callback: v => v + '%' },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+            </script>
+        </div>
+    </div>
+</div><!-- Low Attendance Tab -->
+<div class="tab-content" id="lowAttendanceTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Low Attendance Students (< 75%)</h3>
+        </div>
+        <div class="card-body">
+            {% if low_attendance %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Grade/Section</th>
+                            <th>Classes</th>
+                            <th>Present</th>
+                            <th>Attendance %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in low_attendance %}
+                        <tr>
+                            <td>{{ student.name }} ({{ student.student_system_id }})</td>
+                            <td>{{ student.grade_name }} - {{ student.section_name }}</td>
+                            <td>{{ student.total_classes }}</td>
+                            <td>{{ student.present_count }}</td>
+                            <td><span class="badge badge-danger">{{ student.percentage }}%</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-check-circle"></i>
+                <p>All students have good attendance!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

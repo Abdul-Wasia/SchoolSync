@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Students - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Students</h1>
+        <p class="page-subtitle">View and manage student records</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card">
+    <div class="card-body">
+        <form method="GET" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: end;">
+            <div class="form-group">
+                <label>Grade</label>
+                <select name="grade_id" id="gradeFilter" onchange="filterSections(this.value); this.form.submit()">
+                    <option value="">All Grades</option>
+                    {% for grade in grades %}
+                    <option value="{{ grade.id }}" {% if grade.id == selected_grade %}selected{% endif %}>{{ grade.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Section</label>
+                <select name="section_id" id="sectionFilter">
+                    <option value="">All Sections</option>
+                    {% for section in sections %}
+                    <option value="{{ section.id }}" {% if section.id == selected_section %}selected{% endif %} data-grade="{{ section.grade_id }}">{{ section.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Search</label>
+                <input type="text" name="search" value="{{ search }}" placeholder="Name, ID, Roll...">
+            </div>
+            <div class="form-group" style="align-self: end;">
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Students Table -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-body">
+        {% if students %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>System ID</th>
+                        <th>Name</th>
+                        <th>Father's Name</th>
+                        <th>Grade</th>
+                        <th>Section</th>
+                        <th>Roll No</th>
+                        <th>Status</th>
+                        <th>Verification</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.student_system_id }}</td>
+                        <td>{{ student.name }}</td>
+                        <td>{{ student.father_name }}</td>
+                        <td>{{ student.grade_name }}</td>
+                        <td>{{ student.section_name }}</td>
+                        <td>{{ student.roll_number }}</td>
+                        <td><span class="badge badge-{{ 'success' if student.status == 'Active' else 'warning' }}">{{ student.status }}</span></td>
+                        <td><span class="badge badge-{{ 'success' if student.verification_status == 'Verified' else 'warning' if student.verification_status == 'Pending' else 'danger' }}">{{ student.verification_status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-user-graduate"></i>
+            <p>No students found</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function filterSections(gradeId) {
+    const sectionSelect = document.getElementById('sectionFilter');
+    Array.from(sectionSelect.options).forEach(opt => {
+        if (opt.value === '') return;
+        if (gradeId === '' || opt.dataset.grade === gradeId) {
+            opt.style.display = '';
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    
+    if (gradeId && sectionSelect.value && sectionSelect.options[sectionSelect.selectedIndex].dataset.grade !== gradeId) {
+        sectionSelect.value = '';
+    }
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', function() {
+    filterSections(document.getElementById('gradeFilter').value);
+});
+</script>
+{% endblock %}

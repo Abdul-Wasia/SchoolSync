@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Subjects - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Subjects</h1>
+        <p class="page-subtitle">Manage academic subjects</p>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="showModal('createSubjectModal')">
+            <i class="fas fa-plus"></i> Add Subject
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if subjects %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Grade</th>
+                        <th>Type</th>
+                        <th>Teachers Assigned</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject in subjects %}
+                    <tr>
+                        <td>{{ subject.subject_name }}</td>
+                        <td>{{ subject.grade_name }}</td>
+                        <td><span class="badge badge-info">{{ subject.type }}</span></td>
+                        <td>{{ subject.teacher_count }}</td>
+                        <td>{{ subject.description or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-book"></i>
+            <p>No subjects created yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create Subject Modal -->
+<div class="modal-overlay" id="createSubjectModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Create Subject</h3>
+            <button class="modal-close" onclick="hideModal('createSubjectModal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_subject') }}">
+            <div class="modal-body">
+                <div class="modal-form-grid">
+                    <div class="form-group full-width">
+                        <label>Subject Name *</label>
+                        <input type="text" name="subject_name" class="form-control" required placeholder="e.g., Mathematics">
+                    </div>
+                    <div class="form-group">
+                        <label>Grade *</label>
+                        <select name="grade_id" class="form-control" required>
+                            <option value="">Select Grade</option>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}">{{ grade.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Type *</label>
+                        <select name="type" class="form-control" required>
+                            <option value="Theory">Theory</option>
+                            <option value="Practical">Practical</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Description</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('createSubjectModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Subject</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

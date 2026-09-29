@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Requests - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Leave Requests</h1>
+        <p class="page-subtitle">Review and approve student leave applications</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-envelope-open-text"></i> Requests</h3>
+    </div>
+    <div class="card-body">
+        {% if requests %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Grade</th>
+                        <th>Dates</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request in requests %}
+                    <tr>
+                        <td>{{ request.student_name }}</td>
+                        <td>{{ request.grade_name or 'N/A' }}</td>
+                        <td>{{ request.from_date.strftime('%b %d, %Y') }} - {{ request.to_date.strftime('%b %d, %Y') }}</td>
+                        <td>{{ request.reason }}</td>
+                        <td><span class="badge badge-{{ request.status|lower }}">{{ request.status }}</span></td>
+                        <td>
+                            {% if request.status == 'Pending' %}
+                            <form method="POST" action="{{ url_for('fa.respond_leave_request') }}" style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="hidden" name="leave_id" value="{{ request.id }}">
+                                <input type="text" name="response_note" placeholder="Notes" class="form-control" style="max-width: 140px;">
+                                <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">Approve</button>
+                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger">Reject</button>
+                            </form>
+                            {% else %}
+                            {{ request.response_note or 'Reviewed' }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-envelope-open-text"></i>
+            <p>No leave requests available</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

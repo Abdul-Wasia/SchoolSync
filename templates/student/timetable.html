@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}My Timetable - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>My Timetable</h1>
+        <p class="page-subtitle">{{ student.grade_name }} - {{ student.section_name }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-calendar-alt"></i> Weekly Schedule</h3>
+    </div>
+    <div class="card-body">
+        {% if timetable and timetable|length > 0 %}
+        <div class="timetable-grid">
+            <!-- Header Row -->
+            <div class="timetable-cell header">Period / Day</div>
+            {% for day in days %}
+            <div class="timetable-cell header">{{ day }}</div>
+            {% endfor %}
+
+            <!-- Period Rows -->
+            {% for period in range(1, 9) %}
+            <div class="timetable-cell period-header">Period {{ period }}</div>
+            {% for day in days %}
+            <div class="timetable-cell">
+                {% set slots = [] %}
+                {% if timetable is mapping %}
+                    {% set slots = timetable.get(day, []) | selectattr('period', 'equalto', period) | list %}
+                {% endif %}
+                {% if slots %}
+                    {% for slot in slots %}
+                    <div class="timetable-slot" style="background: {{ subjectColor(slot.subject_name) }}">
+                        <strong>{{ slot.subject_name }}</strong>
+                        <small>{{ slot.teacher_name }}</small>
+                        <small>{{ slot.start_time.strftime('%H:%M') if slot.start_time is not string else slot.start_time[:5] }} - {{ slot.end_time.strftime('%H:%M') if slot.end_time is not string else slot.end_time[:5] }}</small>
+                        <small>{{ slot.room_type }}</small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="timetable-empty">Free Period</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-calendar-alt"></i>
+            <p>No timetable scheduled yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course_info.subject_name }} - {{ course_info.grade_name }} {{ course_info.section_name }} - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ course_info.subject_name }}</h1>
+        <p class="page-subtitle">{{ course_info.grade_name }} - {{ course_info.section_name }} | {{ course_info.type }}</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('attendanceTab', this)">
+        <i class="fas fa-clipboard-check"></i> Attendance
+    </button>
+    <button class="tab-btn" onclick="showTab('assignmentsTab', this)">
+        <i class="fas fa-tasks"></i> Assignments
+    </button>
+    <button class="tab-btn" onclick="showTab('studentsTab', this)">
+        <i class="fas fa-users"></i> Students
+    </button>
+    <button class="tab-btn" onclick="showTab('materialsTab', this)">
+        <i class="fas fa-file"></i> Materials
+    </button>
+</div>
+
+<!-- Attendance Tab -->
+<div class="tab-content active" id="attendanceTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Attendance Sheet</h3>
+            <div class="header-actions">
+                {% if not attendance_marked %}
+                <button class="btn btn-primary" onclick="showModal('attendanceModal')">
+                    <i class="fas fa-plus"></i> Mark Attendance
+                </button>
+                {% else %}
+                <span class="badge badge-success">Attendance Marked for Today</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            {% if students %}
+            <form method="POST" action="{{ url_for('teacher.save_attendance', subject_id=subject_id, section_id=section_id) }}" id="attendanceForm">
+                <input type="hidden" name="date" value="{{ now.date().isoformat() }}">
+                <div class="table-responsive">
+                    <table class="table attendance-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">Roll No</th>
+                                <th>Student Name</th>
+                                <th style="width: 120px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr id="row_{{ student.id }}">
+                                <td>{{ student.roll_number }}</td>
+                                <td>{{ student.name }}</td>
+                                <td>
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input type="radio" name="status_{{ student.id }}" value="Present" required onchange="rowColor({{ student.id }}, 'Present'); updateAttCounts()">
+                                            <span class="radio-label present"><i class="fas fa-check"></i> Present</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="status_{{ student.id }}" value="Absent" onchange="rowColor({{ student.id }}, 'Absent'); updateAttCounts()">
+                                            <span class="radio-label absent"><i class="fas fa-times"></i> Absent</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="status_{{ student.id }}" value="Late" onchange="rowColor({{ student.id }}, 'Late'); updateAttCounts()">
+                                            <span class="radio-label late"><i class="fas fa-clock"></i> Late</span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="status_{{ student.id }}" value="Leave" onchange="rowColor({{ student.id }}, 'Leave'); updateAttCounts()">
+                                            <span class="radio-label leave"><i class="fas fa-calendar-times"></i> Leave</span>
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="attendance-summary">
+                    <span>Present: <strong id="countPresent">0</strong></span>
+                    <span>Absent: <strong id="countAbsent">0</strong></span>
+                    <span>Late: <strong id="countLate">0</strong></span>
+                    <span>Leave: <strong id="countLeave">0</strong></span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="markAllStatus('Present')">All Present</button>
+                    <button type="submit" class="btn btn-primary">Save Attendance</button>
+                </div>
+            </form>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>No students in this section</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Assignments Tab -->
+<div class="tab-content" id="assignmentsTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Assignments</h3>
+            <button class="btn btn-primary" onclick="showModal('createAssignmentModal')">
+                <i class="fas fa-plus"></i> Create Assignment
+            </button>
+        </div>
+        <div class="card-body">
+            {% if assignments %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Due Date</th>
+                            <th>Total Marks</th>
+                            <th>Submissions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in assignments %}
+                        <tr>
+                            <td>{{ assignment.title }}</td>
+                            <td>{{ assignment.due_date.strftime('%b %d, %Y %H:%M') }}</td>
+                            <td>{{ assignment.total_marks }}</td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-outline">View Submissions</a>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn btn-sm btn-outline" onclick="gradeAssignment({{ assignment.id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-tasks"></i>
+                <p>No assignments created</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Students Tab -->
+<div class="tab-content" id="studentsTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Student List</h3>
+        </div>
+        <div class="card-body">
+            {% if students %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Roll No</th>
+                            <th>Name</th>
+                            <th>Student ID</th>
+                            <th>DOB</th>
+                            <th>Gender</th>
+                            <th>Parent Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.roll_number }}</td>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.student_system_id }}</td>
+                            <td>{{ student.dob.strftime('%b %d, %Y') if student.dob else '-' }}</td>
+                            <td>{{ student.gender }}</td>
+                            <td>{{ student.parent_contact }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>No students in this section</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Materials Tab -->
+<div class="tab-content" id="materialsTab">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-file"></i> Course Materials</h3>
+        </div>
+        <div class="card-body">
+            <form id="uploadMaterialForm" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Title *</label>
+                        <input type="text" name="title" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Material Type</label>
+                        <select name="material_type" class="form-control">
+                            <option value="PDF">PDF</option>
+                            <option value="Video">Video</option>
+                            <option value="Link">Link</option>
+                            <option value="Notes">Notes</option>
+                            <option value="Slides">Slides</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>File / URL</label>
+                        <input type="file" name="file" class="form-control">
+                        <small class="text-muted">Or enter an external URL:</small>
+                        <input type="text" name="external_url" class="form-control" placeholder="https://example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <input type="hidden" name="subject_id" value="{{ subject_id }}">
+                        <input type="text" class="form-control" readonly value="{{ course_info.subject_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Section</label>
+                        <input type="hidden" name="section_id" value="{{ section_id }}">
+                        <input type="text" class="form-control" readonly value="{{ course_info.section_name }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Upload Material</button>
+            </form>
+            <div id="materialsOutput" style="margin-top: 2rem; display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Modal -->
+<div class="modal-overlay" id="attendanceModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Mark Attendance</h3>
+            <button class="modal-close" onclick="hideModal('attendanceModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-center" style="color: var(--muted);">Attendance will be marked for today ({{ now.strftime('%b %d, %Y') }})</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="hideModal('attendanceModal')">Cancel</button>
+            <a href="{{ url_for('teacher.attendance', subject_id=subject_id, section_id=section_id) }}" class="btn btn-primary">
+                Open Full Attendance Page
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Create Assignment Modal -->
+<div class="modal-overlay" id="createAssignmentModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Create Assignment</h3>
+            <button class="modal-close" onclick="hideModal('createAssignmentModal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('teacher.create_assignment', subject_id=subject_id, section_id=section_id) }}">
+            <div class="modal-body">
+                <div class="modal-form-grid">
+                    <div class="form-group full-width">
+                        <label>Title *</label>
+                        <input type="text" name="title" class="form-control" required placeholder="e.g., Chapter 3 Exercises">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Instructions</label>
+                        <textarea name="instructions" class="form-control" rows="3" placeholder="Assignment details..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date *</label>
+                        <input type="datetime-local" name="due_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Marks</label>
+                        <input type="number" name="total_marks" class="form-control" value="100" min="1">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Assign to Sections</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="section_ids" value="{{ section_id }}" checked> {{ course_info.grade_name }} - {{ course_info.section_name }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('createAssignmentModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Assignment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Initialize row colors from any pre-selected values
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.attendance-table input[type="radio"]:checked').forEach(radio => {
+        const row = radio.closest('tr');
+        const status = radio.value;
+        rowColor(row.id.replace('row_', ''), status);
+    });
+    updateAttCounts();
+});
+
+// Materials upload handler
+document.getElementById('uploadMaterialForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = new FormData(this);
+    fetch('{{ url_for("teacher.upload_material", subject_id=subject_id, section_id=section_id) }}', {
+        method: 'POST',
+        body: form
+    }).then(r => r.json()).then(data => {
+        document.getElementById('materialsOutput').innerHTML = '<div class="alert ' + (data.success ? 'alert-success' : 'alert-danger') + '">' + (data.message || 'Error') + '</div>';
+        if (data.success) {
+            // Reload materials - simple reload
+            location.reload();
+        }
+    }).catch(err => {
+        document.getElementById('materialsOutput').innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>';
+    });
+});
+
+function rowColor(studentId, status) {
+    const row = document.getElementById('row_' + studentId);
+    row.classList.remove('status-present', 'status-absent', 'status-late', 'status-leave');
+    row.classList.add('status-' + status.toLowerCase());
+}
+
+function updateAttCounts() {
+    const counts = { Present: 0, Absent: 0, Late: 0, Leave: 0 };
+    document.querySelectorAll('.attendance-table input[type="radio"]:checked').forEach(radio => {
+        counts[radio.value]++;
+    });
+    document.getElementById('countPresent').textContent = counts.Present;
+    document.getElementById('countAbsent').textContent = counts.Absent;
+    document.getElementById('countLate').textContent = counts.Late;
+    document.getElementById('countLeave').textContent = counts.Leave;
+}
+
+function markAllStatus(status) {
+    document.querySelectorAll('.attendance-table input[type="radio"][value="' + status + '"]').forEach(radio => {
+        radio.checked = true;
+        rowColor(radio.name.replace('status_', ''), status);
+    });
+    updateAttCounts();
+}
+</script>
+{% endblock %}

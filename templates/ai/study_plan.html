@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Study Planner - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>AI Study Planner</h1>
+        <p class="page-subtitle">Plan revision ahead of exams</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form id="studyPlanForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Exam Date</label>
+                    <input type="date" name="exam_date" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Hours per day</label>
+                    <input type="number" name="hours_per_day" class="form-control" min="1" value="3">
+                </div>
+                <div class="form-group full-width">
+                    <label>Subjects</label>
+                    <select name="subjects" class="form-control" multiple size="6">
+                        {% for subject in subjects %}
+                        <option value="{{ subject.subject_name }}">{{ subject.subject_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Generate Plan</button>
+        </form>
+        <div id="planOutput" style="margin-top: 1.5rem; display:none;" class="card inner-card">
+            <div class="card-body" id="planText"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('studyPlanForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const form = new FormData(this);
+    const selected = Array.from(this.querySelectorAll('select[name="subjects"] option:checked')).map(opt => opt.value);
+    fetch('{{ url_for("ai.study_plan") }}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        exam_date: form.get('exam_date'),
+        subjects: selected,
+        hours_per_day: form.get('hours_per_day')
+      })
+    }).then(r => r.json()).then(data => {
+      if (!data.success) throw new Error(data.message || 'Failed');
+      document.getElementById('planOutput').style.display = 'block';
+      document.getElementById('planText').innerHTML = data.plan;
+    }).catch(err => {
+      alert(err.message);
+    });
+  });
+</script>
+{% endblock %}

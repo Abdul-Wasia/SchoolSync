@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Welcome, {{ student.name }}</h1>
+        <p class="page-subtitle">{{ student.grade_name }} - {{ student.section_name }} | Roll: {{ student.roll_number }}</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-clipboard-check"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">
+                {% if attendance_stats and attendance_stats.total and attendance_stats.total > 0 %}
+                {{ ((attendance_stats.present / attendance_stats.total) * 100) | round(1) }}%
+                {% else %}
+                0%
+                {% endif %}
+            </div>
+            <div class="stat-label">Attendance Rate</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ attendance_stats.present or 0 }}">{{ attendance_stats.present or 0 }}</div>
+            <div class="stat-label">Present</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ attendance_stats.absent or 0 }}">{{ attendance_stats.absent or 0 }}</div>
+            <div class="stat-label">Absent</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-tasks"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ pending_assignments }}">{{ pending_assignments }}</div>
+            <div class="stat-label">Pending Assignments</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- My Courses -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-book"></i> My Courses</h3>
+        </div>
+        <div class="card-body">
+            {% if courses %}
+            <div class="course-grid">
+                {% for course in courses %}
+                <div class="course-card" style="background: {{ subjectColor(course.subject_name) }}">
+                    <div class="course-header">
+                        <h4>{{ course.subject_name }}</h4>
+                        <span class="badge badge-light">{{ course.type }}</span>
+                    </div>
+                    <div class="course-meta">
+                        <span><i class="fas fa-chalkboard-teacher"></i> {{ course.teacher_name }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-book"></i>
+                <p>No courses assigned</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Announcements -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-bullhorn"></i> Latest Announcements</h3>
+        </div>
+        <div class="card-body">
+            {% if announcements %}
+            <div class="announcement-list">
+                {% for ann in announcements %}
+                <div class="announcement-item">
+                    <h4>{{ ann.title }}</h4>
+                    <p>{{ ann.content | truncate(150) }}</p>
+                    <small>{{ ann.created_at.strftime('%b %d, %Y') }}</small>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-bullhorn"></i>
+                <p>No announcements</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+    </div>
+    <div class="card-body">
+        <div class="action-grid">
+            <a href="{{ url_for('student.attendance') }}" class="action-btn">
+                <i class="fas fa-chart-line"></i>
+                <span>View Attendance</span>
+            </a>
+            <a href="{{ url_for('student.assignments') }}" class="action-btn">
+                <i class="fas fa-tasks"></i>
+                <span>Assignments</span>
+            </a>
+            <a href="{{ url_for('student.results') }}" class="action-btn">
+                <i class="fas fa-chart-bar"></i>
+                <span>Results</span>
+            </a>
+            <a href="{{ url_for('student.timetable') }}" class="action-btn">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Timetable</span>
+            </a>
+            <a href="{{ url_for('student.homework') }}" class="action-btn">
+                <i class="fas fa-book"></i>
+                <span>Homework</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

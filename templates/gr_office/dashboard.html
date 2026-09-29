@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}GR Office Dashboard - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>GR Office Dashboard</h1>
+        <p>Student enrollment and document management</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('gr.register') }}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Register New Student
+        </a>
+    </div>
+</div>
+
+{% set students = students if students else [] %}
+{% set total = students|length %}
+{% set active = students|selectattr('status','equalto','Active')|list|length %}
+{% set pending_login = students|selectattr('status','equalto','PendingLogin')|list|length %}
+{% set docs_pending = students|selectattr('verification_status','equalto','Pending')|list|length %}
+
+<div class="stats-grid">
+    <div class="stat-card" style="background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white;">
+        <span class="stat-icon"><i class="fas fa-users"></i></span>
+        <div>
+            <div class="stat-num">{{ total }}</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+    </div>
+    <div class="stat-card" style="background: linear-gradient(135deg, #16A34A, #15803D); color: white;">
+        <span class="stat-icon"><i class="fas fa-user-check"></i></span>
+        <div>
+            <div class="stat-num">{{ active }}</div>
+            <div class="stat-label">Active</div>
+        </div>
+    </div>
+    <div class="stat-card" style="background: linear-gradient(135deg, #D97706, #B45309); color: white;">
+        <span class="stat-icon"><i class="fas fa-user-clock"></i></span>
+        <div>
+            <div class="stat-num">{{ pending_login }}</div>
+            <div class="stat-label">Pending Login</div>
+        </div>
+    </div>
+    <div class="stat-card" style="background: linear-gradient(135deg, #DC2626, #B91C1C); color: white;">
+        <span class="stat-icon"><i class="fas fa-file-alt"></i></span>
+        <div>
+            <div class="stat-num">{{ docs_pending }}</div>
+            <div class="stat-label">Docs Pending</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Students</h3>
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="studentSearch" placeholder="Search students..." onkeyup="filterStudents()">
+        </div>
+    </div>
+    <div class="card-body">
+        {% if students %}
+        <div class="table-responsive">
+            <table class="table" id="studentsTable">
+                <thead>
+                    <tr>
+                        <th>System ID</th>
+                        <th>Name</th>
+                        <th>Father's Name</th>
+                        <th>Grade</th>
+                        <th>Section</th>
+                        <th>Roll No</th>
+                        <th>Status</th>
+                        <th>Verification</th>
+                        <th>Documents</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td><strong>{{ student.student_system_id }}</strong></td>
+                        <td>{{ student.name }}</td>
+                        <td>{{ student.father_name or '-' }}</td>
+                        <td>{{ student.grade_name or '-' }}</td>
+                        <td>{{ student.section_name or '-' }}</td>
+                        <td>{{ student.roll_number or '-' }}</td>
+                        <td>
+                            {% if student.status == 'Active' %}
+                            <span class="badge badge-success">Active</span>
+                            {% elif student.status == 'PendingLogin' %}
+                            <span class="badge badge-warning">Pending Login</span>
+                            {% else %}
+                            <span class="badge badge-danger">{{ student.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if student.verification_status == 'Verified' %}
+                            <span class="badge badge-success">Verified</span>
+                            {% elif student.verification_status == 'Pending' %}
+                            <span class="badge badge-warning">Pending</span>
+                            {% else %}
+                            <span class="badge badge-danger">{{ student.verification_status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ student.verified_count }}/{{ student.doc_count }}</td>
+                        <td>
+                            <a href="{{ url_for('gr.verify', student_id=student.id) }}" class="btn btn-sm btn-outline">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users"></i>
+            <h3>No Students Yet</h3>
+            <p>Register your first student to get started.</p>
+            <a href="{{ url_for('gr.register') }}" class="btn btn-primary" style="margin-top:16px">
+                <i class="fas fa-user-plus"></i> Register Student
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function filterStudents() {
+    var input = document.getElementById('studentSearch');
+    var filter = input.value.toLowerCase();
+    var rows = document.querySelectorAll('#studentsTable tbody tr');
+    rows.forEach(function(row) {
+        var text = row.textContent.toLowerCase();
+        row.style.display = text.indexOf(filter) > -1 ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

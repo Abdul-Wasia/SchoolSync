@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}View Submissions - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Assignment Submissions</h1>
+        <p class="page-subtitle">{{ assignment.title }} | {{ assignment.grade_name }} - {{ assignment.section_name }}</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ submissions|length }}</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ submissions|selectattr('id')|list|length }}</div>
+            <div class="stat-label">Submitted</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ submissions|rejectattr('id')|list|length }}</div>
+            <div class="stat-label">Not Submitted</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ submissions|selectattr('marks_obtained', 'none')|list|length }}</div>
+            <div class="stat-label">Pending Grading</div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3><i class="fas fa-list"></i> Student Submissions</h3>
+        <div class="card-header-actions">
+            <span class="text-muted">Due: {{ assignment.due_date.strftime('%b %d, %Y %H:%M') }}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if submissions %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Roll No</th>
+                        <th>Student Name</th>
+                        <th>System ID</th>
+                        <th>Submitted</th>
+                        <th>Marks</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr class="{% if sub.id %}table-success{% else %}table-danger{% endif %}">
+                        <td>{{ loop.index }}</td>
+                        <td>{{ sub.roll_number or '-' }}</td>
+                        <td>{{ sub.student_name }}</td>
+                        <td>{{ sub.student_system_id or '-' }}</td>
+                        <td>
+                            {% if sub.id %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> Yes</span>
+                            <br><small class="text-muted">{{ sub.submitted_at.strftime('%b %d, %H:%M') if sub.submitted_at else '' }}</small>
+                            {% else %}
+                            <span class="text-danger"><i class="fas fa-times-circle"></i> No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sub.marks_obtained is not none %}
+                            <strong>{{ sub.marks_obtained }}/{{ assignment.total_marks }}</strong>
+                            {% elif sub.id %}
+                            <span class="text-warning">Not graded</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sub.id %}
+                            {% if sub.marks_obtained is none %}
+                            <form method="POST" action="{{ url_for('teacher.grade_submission') }}" style="display:flex;align-items:center;gap:4px;" class="grade-form">
+                                <input type="hidden" name="submission_id" value="{{ sub.id }}">
+                                <input type="number" name="marks" class="form-control form-control-sm" style="width:70px;" min="0" max="{{ assignment.total_marks }}" placeholder="Marks" required>
+                                <button type="submit" class="btn btn-sm btn-success" title="Grade"><i class="fas fa-check"></i></button>
+                            </form>
+                            {% else %}
+                            <span class="text-success"><i class="fas fa-check-double"></i> Graded</span>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No students enrolled in this section</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

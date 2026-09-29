@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Homework - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Homework</h1>
+        <p class="page-subtitle">View and submit homework</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if homework_list %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Subject</th>
+                        <th>Due Date</th>
+                        <th>Max Marks</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hw in homework_list %}
+                    <tr class="{% if hw.status == 'Overdue' %}table-danger{% elif hw.status == 'Submitted' %}table-success{% endif %}">
+                        <td>
+                            <strong>{{ hw.title }}</strong>
+                            {% if hw.instructions %}
+                            <br><small class="text-muted">{{ hw.instructions | truncate(100) }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ hw.subject_name }}</td>
+                        <td>{{ hw.due_date.strftime('%b %d, %Y %H:%M') }}</td>
+                        <td>{{ hw.total_marks }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if hw.status == 'Submitted' else 'danger' if hw.status == 'Overdue' else 'warning' }}">
+                                {{ hw.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if hw.status == 'Submitted' %}
+                            <span class="text-success">
+                                <i class="fas fa-check-circle"></i> Submitted {{ hw.submitted_at.strftime('%b %d, %H:%M') }}
+                                {% if hw.marks_obtained is not none %}
+                                | Grade: {{ hw.marks_obtained }}/{{ hw.total_marks }}
+                                {% endif %}
+                            </span>
+                            {% elif hw.status == 'Overdue' %}
+                            <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Overdue</span>
+                            {% else %}
+                            <button class="btn btn-sm btn-primary" onclick="showSubmitModal({{ hw.id }}, '{{ hw.title }}')">
+                                <i class="fas fa-upload"></i> Submit
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-book"></i>
+            <p>No homework assigned</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Submit Modal -->
+<div class="modal-overlay" id="submitModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Submit Homework: <span id="modalHomeworkTitle"></span></h3>
+            <button class="modal-close" onclick="hideModal('submitModal')">&times;</button>
+        </div>
+        <form method="POST" id="submitForm" enctype="multipart/form-data">
+            <input type="hidden" name="homework_id" id="modalHomeworkId">
+            <div class="modal-body">
+                <div class="modal-form-grid">
+                    <div class="form-group full-width">
+                        <label>Text Response (Optional)</label>
+                        <textarea name="text_response" class="form-control" rows="4" placeholder="Enter your response here..."></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Upload File (Optional)</label>
+                        <input type="file" name="file" class="form-control" accept=".pdf,.docx,.zip,.png,.jpg,.jpeg">
+                        <small class="form-hint">Max 16MB. Allowed: PDF, DOCX, ZIP, PNG, JPG</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('submitModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit Homework</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showSubmitModal(homeworkId, title) {
+    document.getElementById('modalHomeworkId').value = homeworkId;
+    document.getElementById('modalHomeworkTitle').textContent = title;
+    document.getElementById('submitForm').action = '{{ url_for("student.submit_homework", homework_id=0) }}'.replace('0', homeworkId);
+    showModal('submitModal');
+}
+</script>
+{% endblock %}

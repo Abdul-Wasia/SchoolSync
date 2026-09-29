@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Assignments - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Assignments</h1>
+        <p class="page-subtitle">View and submit assignments</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if assignments %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Subject</th>
+                        <th>Due Date</th>
+                        <th>Max Marks</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in assignments %}
+                    <tr class="{% if assignment.status == 'Overdue' %}table-danger{% elif assignment.status == 'Submitted' %}table-success{% endif %}">
+                        <td>
+                            <strong>{{ assignment.title }}</strong>
+                            {% if assignment.instructions %}
+                            <br><small class="text-muted">{{ assignment.instructions | truncate(100) }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ assignment.subject_name }}</td>
+                        <td>{{ assignment.due_date.strftime('%b %d, %Y %H:%M') }}</td>
+                        <td>{{ assignment.total_marks }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if assignment.status == 'Submitted' else 'danger' if assignment.status == 'Overdue' else 'warning' }}">
+                                {{ assignment.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if assignment.status == 'Submitted' %}
+                            <span class="text-success">
+                                <i class="fas fa-check-circle"></i> Submitted {{ assignment.submitted_at.strftime('%b %d, %H:%M') }}
+                                {% if assignment.marks_obtained is not none %}
+                                | Grade: {{ assignment.marks_obtained }}/{{ assignment.total_marks }}
+                                {% endif %}
+                            </span>
+                            {% elif assignment.status == 'Overdue' %}
+                            <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Overdue</span>
+                            {% else %}
+                            <button class="btn btn-sm btn-primary" onclick="showSubmitModal({{ assignment.id }}, '{{ assignment.title }}')">
+                                <i class="fas fa-upload"></i> Submit
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-tasks"></i>
+            <p>No assignments for your section</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Submit Modal -->
+<div class="modal-overlay" id="submitModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Submit Assignment: <span id="modalAssignmentTitle"></span></h3>
+            <button class="modal-close" onclick="hideModal('submitModal')">&times;</button>
+        </div>
+        <form method="POST" id="submitForm" enctype="multipart/form-data">
+            <input type="hidden" name="assignment_id" id="modalAssignmentId">
+            <div class="modal-body">
+                <div class="submit-assignment-card">
+                    <div class="submit-card-header">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h4>Upload Your Work</h4>
+                        <p>Drag and drop your file here or click to browse</p>
+                    </div>
+                    <div class="submit-card-body">
+                        <div class="form-group">
+                            <label>Text Response (Optional)</label>
+                            <textarea name="text_response" class="form-control" rows="4" placeholder="Type your response here if needed..."></textarea>
+                        </div>
+                        <div class="drag-drop-zone" id="dropZone">
+                            <input type="file" name="file" id="fileInput" accept=".pdf,.docx,.zip,.png,.jpg,.jpeg" hidden>
+                            <div class="drop-zone-content">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Drag & drop your file here</p>
+                                <small>or</small>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('fileInput').click()">
+                                    <i class="fas fa-folder-open"></i> Browse Files
+                                </button>
+                            </div>
+                            <div class="drop-zone-preview" id="dropZonePreview" style="display:none;">
+                                <i class="fas fa-file-alt file-icon"></i>
+                                <div class="file-info">
+                                    <span id="fileName" class="file-name"></span>
+                                    <small id="fileSize" class="file-size"></small>
+                                </div>
+                                <button type="button" class="btn-remove-file" onclick="removeFile()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-hint">Max 16MB. Allowed: PDF, DOCX, ZIP, PNG, JPG</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('submitModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Assignment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showSubmitModal(assignmentId, title) {
+    document.getElementById('modalAssignmentId').value = assignmentId;
+    document.getElementById('modalAssignmentTitle').textContent = title;
+    document.getElementById('submitForm').action = '{{ url_for("student.submit_assignment", assignment_id=0) }}'.replace('0', assignmentId);
+    removeFile();
+    showModal('submitModal');
+}
+
+var dropZone = document.getElementById('dropZone');
+var fileInput = document.getElementById('fileInput');
+var dropPreview = document.getElementById('dropZonePreview');
+var dropContent = dropZone ? dropZone.querySelector('.drop-zone-content') : null;
+
+if (dropZone) {
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', function() {
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            showFilePreview(e.dataTransfer.files[0]);
+        }
+    });
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+            showFilePreview(fileInput.files[0]);
+        }
+    });
+}
+
+function showFilePreview(file) {
+    if (dropContent) dropContent.style.display = 'none';
+    if (dropPreview) dropPreview.style.display = 'flex';
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    var icon = dropPreview.querySelector('.file-icon');
+    if (icon) {
+        icon.className = 'fas file-icon';
+        if (file.name.endsWith('.pdf')) icon.classList.add('fa-file-pdf');
+        else if (file.name.endsWith('.docx')) icon.classList.add('fa-file-word');
+        else if (file.name.endsWith('.zip')) icon.classList.add('fa-file-archive');
+        else icon.classList.add('fa-file-image');
+    }
+}
+
+function removeFile() {
+    fileInput.value = '';
+    if (dropContent) dropContent.style.display = '';
+    if (dropPreview) dropPreview.style.display = 'none';
+}
+</script>
+{% endblock %}

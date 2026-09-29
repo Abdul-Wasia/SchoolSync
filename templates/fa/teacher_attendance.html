@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher Attendance - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Teacher Attendance</h1>
+        <p class="page-subtitle">Mark attendance for {{ today.strftime('%b %d, %Y') }}</p>
+    </div>
+    <div class="header-actions">
+        <form method="POST" style="display: inline;">
+            <input type="hidden" name="action" value="save_attendance">
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save"></i> Save All Attendance
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if teachers %}
+        <div class="attendance-summary" id="summaryBar">
+            <span>Present: <strong id="countPresent">0</strong></span>
+            <span>Absent: <strong id="countAbsent">0</strong></span>
+            <span>Late: <strong id="countLate">0</strong></span>
+            <span>Leave: <strong id="countLeave">0</strong></span>
+        </div>
+        
+        <form method="POST">
+            <input type="hidden" name="action" value="save_attendance">
+            
+            <div class="table-responsive">
+                <table class="table attendance-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">#</th>
+                            <th>Teacher Name</th>
+                            <th>Subject</th>
+                            <th>Phone</th>
+                            <th style="width: 250px;">Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in teachers %}
+                        <tr id="trow_{{ teacher.id }}">
+                            <td>{{ loop.index }}</td>
+                            <td>{{ teacher.name }}</td>
+                            <td>{{ teacher.subject or 'N/A' }}</td>
+                            <td>{{ teacher.phone }}</td>
+                            <td>
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="status_{{ teacher.id }}" value="Present" 
+                                               {% if attendance_map[teacher.id] and attendance_map[teacher.id].status == 'Present' %}checked{% endif %}
+                                               onchange="rowColor('trow_{{ teacher.id }}', 'Present'); updateAttCounts()">
+                                        <span class="radio-label present"><i class="fas fa-check"></i> Present</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="status_{{ teacher.id }}" value="Absent"
+                                               {% if attendance_map[teacher.id] and attendance_map[teacher.id].status == 'Absent' %}checked{% endif %}
+                                               onchange="rowColor('trow_{{ teacher.id }}', 'Absent'); updateAttCounts()">
+                                        <span class="radio-label absent"><i class="fas fa-times"></i> Absent</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="status_{{ teacher.id }}" value="Late"
+                                               {% if attendance_map[teacher.id] and attendance_map[teacher.id].status == 'Late' %}checked{% endif %}
+                                               onchange="rowColor('trow_{{ teacher.id }}', 'Late'); updateAttCounts()">
+                                        <span class="radio-label late"><i class="fas fa-clock"></i> Late</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="status_{{ teacher.id }}" value="Leave"
+                                               {% if attendance_map[teacher.id] and attendance_map[teacher.id].status == 'Leave' %}checked{% endif %}
+                                               onchange="rowColor('trow_{{ teacher.id }}', 'Leave'); updateAttCounts()">
+                                        <span class="radio-label leave"><i class="fas fa-calendar-times"></i> Leave</span>
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="text" name="notes_{{ teacher.id }}" class="form-control" 
+                                       value="{{ attendance_map[teacher.id].notes if attendance_map[teacher.id] else '' }}"
+                                       placeholder="Notes">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="markAllStatus('Present')">All Present</button>
+                <button type="button" class="btn btn-outline" onclick="markAllStatus('Absent')">All Absent</button>
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-save"></i> Save Attendance
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-chalkboard-teacher"></i>
+            <p>No teachers found</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function rowColor(rowId, status) {
+    const row = document.getElementById(rowId);
+    row.classList.remove('status-present', 'status-absent', 'status-late', 'status-leave');
+    row.classList.add('status-' + status.toLowerCase());
+}
+
+function updateAttCounts() {
+    const counts = { Present: 0, Absent: 0, Late: 0, Leave: 0 };
+    document.querySelectorAll('.attendance-table input[type="radio"]:checked').forEach(radio => {
+        counts[radio.value]++;
+    });
+    document.getElementById('countPresent').textContent = counts.Present;
+    document.getElementById('countAbsent').textContent = counts.Absent;
+    document.getElementById('countLate').textContent = counts.Late;
+    document.getElementById('countLeave').textContent = counts.Leave;
+}
+
+function markAllStatus(status) {
+    document.querySelectorAll('.attendance-table input[type="radio"][value="' + status + '"]').forEach(radio => {
+        radio.checked = true;
+        rowColor(radio.closest('tr').id, status);
+    });
+    updateAttCounts();
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.attendance-table input[type="radio"]:checked').forEach(radio => {
+        rowColor(radio.closest('tr').id, radio.value);
+    });
+    updateAttCounts();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Reports</h1>
+        <p class="page-subtitle">Section-wise summary and analytics</p>
+    </div>
+</div>
+
+{% if report %}
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-blue">
+        <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ report | sum(attribute='student_count') }}</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-icon"><i class="fas fa-user-check"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ report | sum(attribute='active_count') }}</div>
+            <div class="stat-label">Active Students</div>
+        </div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="stat-icon"><i class="fas fa-door-open"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ report | length }}</div>
+            <div class="stat-label">Total Sections</div>
+        </div>
+    </div>
+    <div class="stat-card stat-purple">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ report | sum(attribute='capacity') }}</div>
+            <div class="stat-label">Total Capacity</div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Table -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-table"></i> Section-wise Report</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Grade</th>
+                        <th>Section</th>
+                        <th>Capacity</th>
+                        <th>Total Students</th>
+                        <th>Active Students</th>
+                        <th>Utilization</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in report %}
+                    <tr>
+                        <td><strong>{{ row.grade_name }}</strong></td>
+                        <td>{{ row.section_name }}</td>
+                        <td>{{ row.capacity }}</td>
+                        <td>{{ row.student_count }}</td>
+                        <td>{{ row.active_count }}</td>
+                        <td>
+                            {% set pct = (row.active_count / row.capacity * 100) | round(1) if row.capacity > 0 else 0 %}
+                            <div class="progress-bar" style="width: 120px;">
+                                <div class="progress-fill {% if pct >= 90 %}red{% elif pct >= 75 %}amber{% else %}green{% endif %}" style="width: {{ pct }}%"></div>
+                            </div>
+                            <small style="color:#64748B;">{{ pct }}%</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="empty-state" style="margin-top: 2rem;">
+    <i class="fas fa-chart-bar"></i>
+    <h3>No Report Data</h3>
+    <p>No section or student data available to generate reports.</p>
+</div>
+{% endif %}
+{% endblock %}

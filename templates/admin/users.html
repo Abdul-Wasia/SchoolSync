@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>User Management</h1>
+        <p>Manage all system users</p>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="showModal('createUserModal')">
+            <i class="fas fa-plus"></i> Add User
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.full_name or '-' }}</td>
+                        <td>
+                            {% set role_label = {'IT_Admin': 'IT Admin', 'GR_Office': 'GR Office', 'FA': 'Faculty Advisor'}.get(user.user_type, user.user_type) %}
+                            <div class="user-role-cell">
+                                <span class="badge badge-primary">{{ role_label }}</span>
+                                {% if user.role_info %}<small>{{ user.role_info }}</small>{% endif %}
+                            </div>
+                        </td>
+                        <td>{{ user.email or '-' }}</td>
+                        <td>
+                            {% set account_inactive = not user.is_active or (user.user_type == 'Student' and user.student_status == 'Inactive') %}
+                            {% set login_pending = user.user_type == 'Student' and user.student_status == 'PendingLogin' %}
+                            <span class="badge user-status-badge {% if account_inactive %}badge-danger{% elif login_pending %}badge-warning{% else %}badge-success{% endif %}">
+                                {% if account_inactive %}Inactive{% elif login_pending %}Pending Login{% else %}Active{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ user.last_login.strftime('%b %d, %Y %H:%M') if user.last_login else 'Never' }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <form method="POST" action="{{ url_for('admin.toggle_user', user_id=user.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm {% if user.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" 
+                                            onclick="return confirm('Are you sure?')">
+                                        {% if user.is_active %}<i class="fas fa-ban"></i>{% else %}<i class="fas fa-check"></i>{% endif %}
+                                    </button>
+                                </form>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showResetPasswordModal({{ user.id }}, '{{ user.username }}')">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                                {% if user.user_type == 'Student' and user.student_status == 'PendingLogin' %}
+                                <form method="POST" action="{{ url_for('admin.activate_student', student_id=user.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Activate this student?')">
+                                        <i class="fas fa-user-check"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="createUserModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>Create New User</h3>
+            <button class="modal-close" onclick="hideModal('createUserModal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_user') }}" id="createUserForm">
+            <div class="modal-body">
+                <div class="modal-form-grid">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="name" class="form-control" required placeholder="Enter full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" name="username" class="form-control" required placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" name="password" class="form-control" required minlength="6" placeholder="Min 6 characters">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" class="form-control" placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" name="phone" class="form-control" placeholder="Phone number">
+                    </div>
+                    <div class="form-group">
+                        <label>User Type *</label>
+                        <select name="user_type" id="userType" class="form-control" required onchange="toggleRoleFields()">
+                            <option value="">Select Role</option>
+                            <option value="IT_Admin">IT Admin</option>
+                            <option value="GR_Office">GR Office</option>
+                            <option value="Principal">Principal</option>
+                            <option value="FA">Faculty Advisor</option>
+                            <option value="Teacher">Teacher</option>
+                            <option value="Student">Student</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Teacher fields -->
+                <div id="teacherFields" class="role-fields" style="display:none;">
+                    <h4 class="role-section-title">
+                        <i class="fas fa-chalkboard-teacher"></i> Teacher Details
+                    </h4>
+                    <div class="modal-form-grid">
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <input type="text" name="subject" class="form-control" placeholder="e.g. Mathematics">
+                        </div>
+                        <div class="form-group">
+                            <label>Qualification</label>
+                            <input type="text" name="qualification" class="form-control" placeholder="e.g. M.Sc Mathematics">
+                        </div>
+                        <div class="form-group">
+                            <label>Hire Date</label>
+                            <input type="date" name="hire_date" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Student fields -->
+                <div id="studentFields" class="role-fields" style="display:none;">
+                    <h4 class="role-section-title">
+                        <i class="fas fa-user-graduate"></i> Student Details
+                    </h4>
+                    <div class="modal-form-grid">
+                        <div class="form-group">
+                            <label>Father's Name</label>
+                            <input type="text" name="father_name" class="form-control" placeholder="Father's name">
+                        </div>
+                        <div class="form-group">
+                            <label>Section</label>
+                            <select name="section_id" class="form-control">
+                                <option value="">Select Section</option>
+                                {% for sec in sections %}
+                                <option value="{{ sec.id }}">{{ sec.grade_name }} - {{ sec.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Roll Number</label>
+                            <input type="text" name="roll_number" class="form-control" placeholder="Roll number">
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" name="dob" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender" class="form-control">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Parent Contact</label>
+                            <input type="text" name="parent_contact" class="form-control" placeholder="Parent phone">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Address</label>
+                            <textarea name="address" class="form-control" rows="2" placeholder="Full address"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('createUserModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetPasswordModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Reset Password for <span id="resetUsername"></span></h3>
+            <button class="modal-close" onclick="hideModal('resetPasswordModal')">&times;</button>
+        </div>
+        <form method="POST" id="resetPasswordForm">
+            <input type="hidden" name="user_id" id="resetUserId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="resetNewPassword">Temporary Password *</label>
+                    <div class="password-control-row">
+                        <input type="password" name="new_password" id="resetNewPassword" class="form-control" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="btn btn-outline password-action" onclick="togglePasswordVisibility('resetNewPassword', this)" aria-label="Show temporary password" title="Show password"><i class="fas fa-eye"></i></button>
+                        <button type="button" class="btn btn-outline password-action" onclick="generateTemporaryPassword()" title="Generate temporary password" aria-label="Generate temporary password"><i class="fas fa-wand-magic-sparkles"></i></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="confirmResetPassword">Confirm Temporary Password *</label>
+                    <input type="password" name="confirm_password" id="confirmResetPassword" class="form-control" required minlength="6" autocomplete="new-password">
+                </div>
+                <p class="password-reset-guidance">Share this temporary password with the user. They can change it after signing in from their profile.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('resetPasswordModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Reset Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if temporary_password %}
+<div class="modal-overlay" id="temporaryPasswordModal">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="temporaryPasswordTitle">
+        <div class="modal-header">
+            <h3 id="temporaryPasswordTitle">Temporary password for {{ temporary_password_username }}</h3>
+            <button class="modal-close" type="button" onclick="hideModal('temporaryPasswordModal')" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="password-reset-guidance">This password is shown once. Share it securely and ask the user to change it after signing in.</p>
+            <div class="temporary-password-value">
+                <code id="temporaryPasswordValue">{{ temporary_password }}</code>
+                <button type="button" class="btn btn-outline password-action" onclick="copyTemporaryPassword()" title="Copy temporary password" aria-label="Copy temporary password"><i class="fas fa-copy"></i></button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="hideModal('temporaryPasswordModal')">Done</button>
+        </div>
+    </section>
+</div>
+{% endif %}
+
+<script>
+function toggleRoleFields() {
+    var type = document.getElementById('userType').value;
+    document.querySelectorAll('.role-fields').forEach(function(el) { el.style.display = 'none'; });
+    if (type === 'Teacher') document.getElementById('teacherFields').style.display = 'block';
+    if (type === 'Student') document.getElementById('studentFields').style.display = 'block';
+}
+
+function showResetPasswordModal(userId, username) {
+    document.getElementById('resetUserId').value = userId;
+    document.getElementById('resetUsername').textContent = username;
+    document.getElementById('resetNewPassword').value = '';
+    document.getElementById('confirmResetPassword').value = '';
+    document.getElementById('resetPasswordForm').action = '/admin/reset-password/' + userId;
+    showModal('resetPasswordModal');
+}
+
+function togglePasswordVisibility(inputId, button) {
+    var input = document.getElementById(inputId);
+    var visible = input.type === 'password';
+    input.type = visible ? 'text' : 'password';
+    button.innerHTML = '<i class="fas fa-eye' + (visible ? '-slash' : '') + '"></i>';
+    button.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+    button.title = visible ? 'Hide password' : 'Show password';
+}
+
+function generateTemporaryPassword() {
+    var alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    var values = new Uint32Array(14);
+    window.crypto.getRandomValues(values);
+    var password = Array.from(values, function(value) { return alphabet[value % alphabet.length]; }).join('');
+    document.getElementById('resetNewPassword').value = password;
+    document.getElementById('confirmResetPassword').value = password;
+    document.getElementById('resetNewPassword').type = 'text';
+}
+
+function copyTemporaryPassword() {
+    var password = document.getElementById('temporaryPasswordValue').textContent;
+    navigator.clipboard.writeText(password).then(function() {
+        var button = document.querySelector('#temporaryPasswordModal .password-action');
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        button.title = 'Copied';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('temporaryPasswordModal')) {
+        showModal('temporaryPasswordModal');
+    }
+});
+</script>
+{% endblock %}

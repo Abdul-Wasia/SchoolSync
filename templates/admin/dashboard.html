@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Admin Dashboard</h1>
+        <p class="page-subtitle">System overview and quick actions</p>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="showModal('createUserModal')">
+            <i class="fas fa-plus"></i> Add User
+        </button>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-user-graduate"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.students }}">{{ stats.students }}</div>
+            <div class="stat-label">Active Students</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-chalkboard-teacher"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.teachers }}">{{ stats.teachers }}</div>
+            <div class="stat-label">Teachers</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-layer-group"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.sections }}">{{ stats.sections }}</div>
+            <div class="stat-label">Sections</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-user-clock"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.pending }}">{{ stats.pending }}</div>
+            <div class="stat-label">Pending Activations</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Recent Activity -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-history"></i> Recent Activity</h3>
+            <a href="{{ url_for('admin.audit_log') }}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        <div class="card-body">
+            {% if recent_activity %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Details</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in recent_activity %}
+                        <tr>
+                            <td>{{ log.username }}</td>
+                            <td><span class="badge badge-info">{{ log.action }}</span></td>
+                            <td>{{ log.details or '-' }}</td>
+                            <td>{{ log.logged_at.strftime('%b %d, %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-history"></i>
+                <p>No recent activity</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Pending Students -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-user-clock"></i> Pending Activations</h3>
+        </div>
+        <div class="card-body">
+            {% if pending_students %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>System ID</th>
+                            <th>Section</th>
+                            <th>Admission Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in pending_students %}
+                        <tr>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.student_system_id }}</td>
+                            <td>{{ student.section_name or 'Unassigned' }}</td>
+                            <td>{{ student.admission_date.strftime('%b %d, %Y') }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin.activate_student', student_id=student.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Activate this student?')">
+                                        <i class="fas fa-check"></i> Activate
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-user-check"></i>
+                <p>No pending activations</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="createUserModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>Create New User</h3>
+            <button class="modal-close" onclick="hideModal('createUserModal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_user') }}" id="createUserForm">
+            <div class="modal-body">
+                <div class="modal-form-grid">
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" name="username" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" name="password" class="form-control" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" name="phone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>User Type *</label>
+                        <select name="user_type" id="userType" class="form-control" required onchange="toggleRoleFields()">
+                            <option value="">Select Role</option>
+                            <option value="IT_Admin">IT Admin</option>
+                            <option value="GR_Office">GR Office</option>
+                            <option value="Principal">Principal</option>
+                            <option value="FA">Faculty Advisor</option>
+                            <option value="Teacher">Teacher</option>
+                            <option value="Student">Student</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Teacher fields -->
+                <div id="teacherFields" class="role-fields" style="display:none;">
+                    <h4 class="role-section-title">
+                        <i class="fas fa-chalkboard-teacher"></i> Teacher Details
+                    </h4>
+                    <div class="modal-form-grid">
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <input type="text" name="subject" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Qualification</label>
+                            <input type="text" name="qualification" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Hire Date</label>
+                            <input type="date" name="hire_date" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Student fields -->
+                <div id="studentFields" class="role-fields" style="display:none;">
+                    <h4 class="role-section-title">
+                        <i class="fas fa-user-graduate"></i> Student Details
+                    </h4>
+                    <div class="modal-form-grid">
+                        <div class="form-group">
+                            <label>Father's Name</label>
+                            <input type="text" name="father_name" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Section</label>
+                            <select name="section_id" class="form-control">
+                                <option value="">Select Section</option>
+                                {% for sec in sections %}
+                                <option value="{{ sec.id }}">{{ sec.grade_name }} - {{ sec.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Roll Number</label>
+                            <input type="text" name="roll_number" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" name="dob" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender" class="form-control">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Parent Contact</label>
+                            <input type="text" name="parent_contact" class="form-control">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Address</label>
+                            <textarea name="address" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('createUserModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleRoleFields() {
+    const type = document.getElementById('userType').value;
+    document.querySelectorAll('.role-fields').forEach(el => el.style.display = 'none');
+    if (type === 'Teacher') document.getElementById('teacherFields').style.display = 'block';
+    if (type === 'Student') document.getElementById('studentFields').style.display = 'block';
+}
+</script>
+{% endblock %}

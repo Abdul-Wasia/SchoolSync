@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Log - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Audit Log</h1>
+        <p class="page-subtitle">System activity history</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.username }}</td>
+                        <td><span class="badge badge-info">{{ log.action }}</span></td>
+                        <td>{{ log.details or '-' }}</td>
+                        <td>{{ log.ip_address }}</td>
+                        <td>{{ log.logged_at.strftime('%b %d, %Y %H:%M:%S') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <p>No audit logs found</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Override Attendance - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-edit" style="color:var(--primary);margin-right:8px;"></i>Override Attendance</h1>
+        <p>Modify locked attendance records for any section</p>
+    </div>
+</div>
+
+<div class="card attendance-override-card">
+    <div class="card-header">
+        <h3><i class="fas fa-edit"></i> Override Attendance</h3>
+        <p>Modify locked attendance records for specific classes.</p>
+    </div>
+    <div class="override-info">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span><strong>Warning:</strong> Modifications here override the system. Changes are logged in the audit trail.</span>
+    </div>
+    <form method="POST" id="overrideFilterForm">
+        <div class="override-filters">
+            <div class="filter-item">
+                <label><i class="fas fa-layer-group"></i> Grade *</label>
+                <select name="grade_id" id="overrideGradeSelect" onchange="loadSectionsForGrade(this.value)" required>
+                    <option value="">Select Grade</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label><i class="fas fa-chalkboard"></i> Section *</label>
+                <select name="section_id" id="overrideSectionSelect" required>
+                    <option value="">Select Grade First</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label><i class="fas fa-book"></i> Subject *</label>
+                <select name="subject_id" id="overrideSubjectSelect" required>
+                    <option value="">Select Grade First</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label><i class="fas fa-calendar"></i> Date *</label>
+                <input type="date" name="date" id="overrideDate" required value="{{ today }}">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary btn-override-load">
+                    <i class="fas fa-search"></i> Load Attendance
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if attendance_records %}
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+    {% set total = attendance_records|length %}
+    {% set present = attendance_records|selectattr('status', 'equalto', 'Present')|list|length %}
+    {% set absent = attendance_records|selectattr('status', 'equalto', 'Absent')|list|length %}
+    {% set late = attendance_records|selectattr('status', 'equalto', 'Late')|list|length %}
+    {% set leave = attendance_records|selectattr('status', 'equalto', 'Leave')|list|length %}
+    <div class="stat-card stat-blue">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-number" data-count="{{ total }}">{{ total }}</div>
+        <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-number" data-count="{{ present }}">{{ present }}</div>
+        <div class="stat-label">Present</div>
+    </div>
+    <div class="stat-card stat-red">
+        <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-number" data-count="{{ absent }}">{{ absent }}</div>
+        <div class="stat-label">Absent</div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+        <div class="stat-number" data-count="{{ late }}">{{ late }}</div>
+        <div class="stat-label">Late</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#0891B2,#06B6D4);color:white;">
+        <div class="stat-icon"><i class="fas fa-plane-departure"></i></div>
+        <div class="stat-number" data-count="{{ leave }}">{{ leave }}</div>
+        <div class="stat-label">Leave</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-table"></i> Attendance Records — Override Mode</h3>
+        <span class="badge badge-info">{{ attendance_records|length }} records</span>
+    </div>
+    <div class="card-body no-padding">
+        <form method="POST" action="{{ url_for('admin.override_attendance') }}">
+            <input type="hidden" name="section_id" value="{{ request.form.section_id }}">
+            <input type="hidden" name="date" value="{{ request.form.date }}">
+            <input type="hidden" name="subject_id" value="{{ request.form.subject_id }}">
+            
+            <div class="table-responsive">
+                <table class="table attendance-table">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">Roll No</th>
+                            <th>Student Name</th>
+                            <th style="width:130px;">Current Status</th>
+                            <th style="width:220px;">New Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in attendance_records %}
+                        <tr class="row-{{ record.status|lower }}">
+                            <td><strong>{{ record.roll_number }}</strong></td>
+                            <td>{{ record.student_name }}</td>
+                            <td>
+                                <span class="badge badge-{{ 'success' if record.status == 'Present' else 'danger' if record.status == 'Absent' else 'warning' if record.status == 'Late' else 'info' }}">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="attendance-radio">
+                                    <input type="radio" name="status_{{ record.id }}" value="Present" id="ov-p-{{ record.id }}" {% if record.status == 'Present' %}checked{% endif %}>
+                                    <label for="ov-p-{{ record.id }}" class="p-label">P</label>
+                                    <input type="radio" name="status_{{ record.id }}" value="Absent" id="ov-a-{{ record.id }}" {% if record.status == 'Absent' %}checked{% endif %}>
+                                    <label for="ov-a-{{ record.id }}" class="a-label">A</label>
+                                    <input type="radio" name="status_{{ record.id }}" value="Late" id="ov-l-{{ record.id }}" {% if record.status == 'Late' %}checked{% endif %}>
+                                    <label for="ov-l-{{ record.id }}" class="l-label">L</label>
+                                    <input type="radio" name="status_{{ record.id }}" value="Leave" id="ov-lv-{{ record.id }}" {% if record.status == 'Leave' %}checked{% endif %}>
+                                    <label for="ov-lv-{{ record.id }}" class="lv-label">Lv</label>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="padding:16px 24px;background:#F8FAFC;border-top:1px solid #F1F5F9;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <span style="font-size:13px;font-weight:600;color:#64748B;margin-right:8px;">Quick Mark All:</span>
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="markAllOverrideStatus('Present')">
+                    <i class="fas fa-check"></i> All Present
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="markAllOverrideStatus('Absent')">
+                    <i class="fas fa-times"></i> All Absent
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="markAllOverrideStatus('Late')">
+                    <i class="fas fa-clock"></i> All Late
+                </button>
+                <div style="flex:1;"></div>
+                <button type="submit" name="save_override" class="btn btn-success">
+                    <i class="fas fa-save"></i> Save Overrides
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% elif request.method == 'POST' %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="fas fa-search"></i>
+            <h3>No Records Found</h3>
+            <p>No attendance records found for the selected filters.</p>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="fas fa-edit"></i>
+            <h3>Select Filters to Load Attendance</h3>
+            <p>Choose a grade, section, subject, and date to load and override attendance records.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function loadSectionsForGrade(gradeId) {
+    var secSel = document.getElementById('overrideSectionSelect');
+    var subSel = document.getElementById('overrideSubjectSelect');
+    if (!secSel) return;
+    secSel.innerHTML = '<option value="">Loading Sections...</option>';
+    if (subSel) subSel.innerHTML = '<option value="">Loading Subjects...</option>';
+    if (!gradeId) {
+        secSel.innerHTML = '<option value="">Select Grade First</option>';
+        if (subSel) subSel.innerHTML = '<option value="">Select Grade First</option>';
+        return;
+    }
+    fetch('/api/sections/' + gradeId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            secSel.innerHTML = '<option value="">Select Section</option>';
+            data.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                secSel.appendChild(opt);
+            });
+        });
+    fetch('/api/subjects/' + gradeId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            subSel.innerHTML = '<option value="">Select Subject</option>';
+            data.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.subject_name;
+                subSel.appendChild(opt);
+            });
+        });
+}
+
+function markAllOverrideStatus(status) {
+    document.querySelectorAll('.attendance-radio').forEach(function(group) {
+        var radio = group.querySelector('input[value="' + status + '"]');
+        if (radio) {
+            radio.checked = true;
+            var row = radio.closest('tr');
+            if (row) row.className = 'row-' + status.toLowerCase();
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/grades')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var sel = document.getElementById('overrideGradeSelect');
+            if (!sel) return;
+            data.forEach(function(g) {
+                var opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.name;
+                sel.appendChild(opt);
+            });
+        });
+});
+</script>
+{% endblock %}

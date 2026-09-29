@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher Dashboard - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Teacher Dashboard</h1>
+        <p class="page-subtitle">Welcome back, {{ teacher_name if teacher_name else 'Teacher' }}</p>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-primary" onclick="showModal('requestClassModal')">
+            <i class="fas fa-plus"></i> Request Class
+        </button>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-book"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ courses|length }}">{{ courses|length }}</div>
+            <div class="stat-label">My Courses</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-calendar-day"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ schedule|length }}">{{ schedule|length }}</div>
+            <div class="stat-label">Today's Classes</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-tasks"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ pending_grading }}">{{ pending_grading }}</div>
+            <div class="stat-label">Pending Grading</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple"><i class="fas fa-clipboard-list"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ my_requests|length }}">{{ my_requests|length }}</div>
+            <div class="stat-label">Class Requests</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- My Courses -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-book"></i> My Courses</h3>
+        </div>
+        <div class="card-body">
+            {% if courses %}
+            <div class="course-grid">
+                {% for course in courses %}
+                <div class="course-card" style="background: {{ subjectColor(course.subject_name) }}">
+                    <a href="{{ url_for('teacher.course', subject_id=course.subject_id, section_id=course.section_id) }}" class="course-card-link">
+                        <div class="course-header">
+                            <h4>{{ course.subject_name }}</h4>
+                            <span class="badge badge-light">{{ course.type }}</span>
+                        </div>
+                        <div class="course-meta">
+                            <span><i class="fas fa-layer-group"></i> {{ course.grade_name }} - {{ course.section_name }}</span>
+                            <span><i class="fas fa-users"></i> {{ course.student_count }} students</span>
+                        </div>
+                    </a>
+                    {% if course.pending_assignments > 0 %}
+                    <a href="{{ url_for('teacher.submissions', assignment_id=course.next_assignment_id) }}" class="course-action-link" onclick="event.stopPropagation()">
+                        <i class="fas fa-clipboard-list"></i> {{ course.pending_assignments }} pending submissions
+                    </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-book"></i>
+                <p>No courses assigned</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Today's Schedule -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-calendar-day"></i> Today's Schedule</h3>
+        </div>
+        <div class="card-body">
+            {% if schedule %}
+            <div class="schedule-list">
+                {% for slot in schedule %}
+                <div class="schedule-item">
+                    <div class="schedule-time">
+                        <span class="period">Period {{ slot.period }}</span>
+                        <span class="time">{{ slot.start_time.strftime('%H:%M') }} - {{ slot.end_time.strftime('%H:%M') }}</span>
+                    </div>
+                    <div class="schedule-info">
+                        <h4>{{ slot.subject_name }}</h4>
+                        <span>{{ slot.section_name }} ({{ slot.room_type }})</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-day"></i>
+                <p>No classes today</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Class Requests -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3><i class="fas fa-clipboard-list"></i> My Class Requests</h3>
+    </div>
+    <div class="card-body">
+        {% if my_requests %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Grade/Section</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Requested</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in my_requests %}
+                    <tr>
+                        <td>{{ req.class_name }}</td>
+                        <td>{{ req.grade_name }} - {{ req.section_name }}</td>
+                        <td>{{ req.subject_name }}</td>
+                        <td><span class="badge badge-{{ req.status|lower }}">{{ req.status }}</span></td>
+                        <td>{{ req.requested_at.strftime('%b %d, %Y') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-list"></i>
+            <p>No class requests submitted</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Request Class Modal -->
+<div class="modal-overlay" id="requestClassModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>Request New Class</h3>
+            <button class="modal-close" onclick="hideModal('requestClassModal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('teacher.request_class') }}">
+            <div class="modal-body">
+                <div class="modal-form-grid">
+                    <div class="form-group full-width">
+                        <label>Class Name *</label>
+                        <input type="text" name="class_name" class="form-control" required placeholder="e.g., Advanced Mathematics">
+                    </div>
+                    <div class="form-group">
+                        <label>Grade *</label>
+                        <select name="grade_id" id="reqGrade" class="form-control" required onchange="filterModalSections(this.value)">
+                            <option value="">Select Grade</option>
+                            {% for grade in all_grades %}
+                            <option value="{{ grade.id }}">{{ grade.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Section *</label>
+                        <select name="section_id" id="reqSection" class="form-control" required>
+                            <option value="">Select Grade First</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Subject *</label>
+                        <select name="subject_id" id="reqSubject" class="form-control" required>
+                            <option value="">Select Grade First</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Reason</label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="Why do you want to teach this class?"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="hideModal('requestClassModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function filterModalSections(gradeId) {
+    var sectionSel = document.getElementById('reqSection');
+    var subjectSel = document.getElementById('reqSubject');
+    if (sectionSel) sectionSel.innerHTML = '<option value="">Loading Sections...</option>';
+    if (subjectSel) subjectSel.innerHTML = '<option value="">Loading Subjects...</option>';
+    if (!gradeId) {
+        if (sectionSel) sectionSel.innerHTML = '<option value="">Select Grade First</option>';
+        if (subjectSel) subjectSel.innerHTML = '<option value="">Select Grade First</option>';
+        return;
+    }
+    fetch('/api/sections/' + gradeId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            sectionSel.innerHTML = '<option value="">Select Section</option>';
+            data.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                sectionSel.appendChild(opt);
+            });
+        });
+    fetch('/api/subjects/' + gradeId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            subjectSel.innerHTML = '<option value="">Select Subject</option>';
+            data.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.subject_name;
+                subjectSel.appendChild(opt);
+            });
+        });
+}
+</script>
+{% endblock %}

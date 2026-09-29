@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header attendance-page-header">
+    <div>
+        <h1>Attendance Sheet</h1>
+        <p class="page-subtitle">Select a class and record each student's attendance</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<section class="attendance-filters-panel" aria-label="Attendance filters">
+    <form method="GET" class="attendance-filters">
+        <div class="filter-item">
+            <label for="gradeSelect">Grade</label>
+            <select name="grade_id" id="gradeSelect" onchange="onGradeChange(this.value)">
+                <option value="">All Grades</option>
+                {% for grade in grades %}
+                <option value="{{ grade.id }}" {% if grade.id == selected_grade %}selected{% endif %}>{{ grade.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-item">
+            <label for="sectionSelect">Section</label>
+            <select name="section_id" id="sectionSelect" onchange="onSectionChange(this.value)">
+                <option value="">All Sections</option>
+                {% for section in sections %}
+                <option value="{{ section.id }}" {% if section.id == selected_section %}selected{% endif %}>{{ section.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-item">
+            <label for="subjectSelect">Subject</label>
+            <select name="subject_id" id="subjectSelect">
+                <option value="">Select Subject</option>
+                {% for subject in subjects %}
+                <option value="{{ subject.id }}" {% if subject.id == selected_subject %}selected{% endif %}>{{ subject.subject_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-item">
+            <label for="attendanceDate">Date</label>
+            <input type="date" id="attendanceDate" name="date" value="{{ selected_date }}" max="{{ today }}">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary attendance-load-button">
+                <i class="fas fa-users"></i> Load Students
+            </button>
+            <a href="{{ url_for('teacher.attendance') }}" class="btn btn-outline">
+                <i class="fas fa-redo"></i> Reset
+            </a>
+        </div>
+    </form>
+</section>
+
+{% if students %}
+<section class="attendance-sheet" aria-labelledby="attendanceSheetTitle">
+    <header class="attendance-sheet-header">
+        <div>
+            <h2 id="attendanceSheetTitle">{{ subjects|selectattr('id', 'equalto', selected_subject)|map(attribute='subject_name')|first or 'Class Attendance' }}</h2>
+            <p>{{ selected_date }}{% if selected_section %} <span aria-hidden="true">·</span> {{ sections|selectattr('id', 'equalto', selected_section)|map(attribute='name')|first or '' }}{% endif %}</p>
+        </div>
+        <div class="attendance-sheet-actions">
+            {% if not attendance_marked %}
+            <a class="btn btn-primary attendance-mark-button" href="#attendanceRoster">
+                <i class="fas fa-plus"></i> Mark Attendance
+            </a>
+            {% else %}
+            <span class="attendance-locked-badge"><i class="fas fa-lock"></i> Saved</span>
+            {% endif %}
+            <label class="attendance-search">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <input type="search" id="attendanceSearch" placeholder="Search students" aria-label="Search students">
+            </label>
+        </div>
+    </header>
+
+    <div class="attendance-summary-strip" aria-label="Attendance totals" aria-live="polite">
+        <div class="attendance-summary-item summary-present"><i class="fas fa-check-circle"></i><span>Present: <strong id="countPresent">0</strong></span></div>
+        <div class="attendance-summary-item summary-absent"><i class="fas fa-times-circle"></i><span>Absent: <strong id="countAbsent">0</strong></span></div>
+        <div class="attendance-summary-item summary-late"><i class="fas fa-clock"></i><span>Late: <strong id="countLate">0</strong></span></div>
+        <div class="attendance-summary-item summary-leave"><i class="fas fa-file-alt"></i><span>Leave: <strong id="countLeave">0</strong></span></div>
+    </div>
+
+    <form method="POST" id="attendanceForm">
+        <input type="hidden" name="grade_id" value="{{ selected_grade }}">
+        <input type="hidden" name="section_id" value="{{ selected_section }}">
+        <input type="hidden" name="subject_id" value="{{ selected_subject }}">
+        <input type="hidden" name="date" value="{{ selected_date }}">
+
+        <div class="table-responsive attendance-table-wrap" id="attendanceRoster">
+            <table class="table attendance-table">
+                <thead>
+                    <tr>
+                        <th class="attendance-roll-column">Roll No.</th>
+                        <th>Student Name</th>
+                        <th class="attendance-current-column">Current Status</th>
+                        <th class="attendance-choice-column">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    {% set current_status = attendance_by_student.get(student.id) %}
+                    <tr id="row_{{ student.id }}" data-student-id="{{ student.id }}" data-search="{{ student.roll_number }} {{ student.name }} {{ student.father_name or '' }}">
+                        <td><span class="attendance-roll">{{ student.roll_number or loop.index }}</span></td>
+                        <td>
+                            <div class="attendance-student">
+                                <span class="attendance-student-avatar" aria-hidden="true">{{ student.name[0].upper() if student.name else '?' }}</span>
+                                <span><strong>{{ student.name }}</strong>{% if student.father_name %}<small>{{ student.father_name }}</small>{% endif %}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="attendance-current-status{% if current_status %} status-{{ current_status|lower }}{% else %} current-status-empty{% endif %}" data-current-status>
+                                {% if current_status %}
+                                <i class="fas {% if current_status == 'Present' %}fa-check-circle{% elif current_status == 'Absent' %}fa-times-circle{% elif current_status == 'Late' %}fa-clock{% else %}fa-file-alt{% endif %}"></i>{{ current_status }}
+                                {% else %}
+                                Not marked
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="attendance-choice-grid">
+                                <label class="attendance-choice attendance-choice--present">
+                                    <input class="attendance-choice-input" type="radio" name="status_{{ student.id }}" value="Present" {% if current_status == 'Present' %}checked{% endif %} {% if attendance_marked %}disabled{% endif %} onchange="onStatusRadio({{ student.id }}, 'Present')">
+                                    <span class="attendance-choice-card"><span class="attendance-choice-indicator"></span><i class="fas fa-check-circle"></i><span>Present</span></span>
+                                </label>
+                                <label class="attendance-choice attendance-choice--absent">
+                                    <input class="attendance-choice-input" type="radio" name="status_{{ student.id }}" value="Absent" {% if current_status == 'Absent' %}checked{% endif %} {% if attendance_marked %}disabled{% endif %} onchange="onStatusRadio({{ student.id }}, 'Absent')">
+                                    <span class="attendance-choice-card"><span class="attendance-choice-indicator"></span><i class="fas fa-times-circle"></i><span>Absent</span></span>
+                                </label>
+                                <label class="attendance-choice attendance-choice--late">
+                                    <input class="attendance-choice-input" type="radio" name="status_{{ student.id }}" value="Late" {% if current_status == 'Late' %}checked{% endif %} {% if attendance_marked %}disabled{% endif %} onchange="onStatusRadio({{ student.id }}, 'Late')">
+                                    <span class="attendance-choice-card"><span class="attendance-choice-indicator"></span><i class="fas fa-clock"></i><span>Late</span></span>
+                                </label>
+                                <label class="attendance-choice attendance-choice--leave">
+                                    <input class="attendance-choice-input" type="radio" name="status_{{ student.id }}" value="Leave" {% if current_status == 'Leave' %}checked{% endif %} {% if attendance_marked %}disabled{% endif %} onchange="onStatusRadio({{ student.id }}, 'Leave')">
+                                    <span class="attendance-choice-card"><span class="attendance-choice-indicator"></span><i class="fas fa-file-alt"></i><span>Leave</span></span>
+                                </label>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="attendanceNoResults" hidden><td colspan="4" class="attendance-no-results">No students match your search.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="attendance-sheet-footer">
+            <div class="attendance-count-cards" aria-label="Attendance counts" aria-live="polite">
+                <div class="attendance-count-card count-present"><strong id="presentCount">0</strong><span>Present</span></div>
+                <div class="attendance-count-card count-absent"><strong id="absentCount">0</strong><span>Absent</span></div>
+                <div class="attendance-count-card count-late"><strong id="lateCount">0</strong><span>Late</span></div>
+                <div class="attendance-count-card count-leave"><strong id="leaveCount">0</strong><span>Leave</span></div>
+            </div>
+            {% if not attendance_marked %}
+            <div class="attendance-footer-actions">
+                <button type="button" class="btn btn-outline" onclick="markAllPresent()">All Present</button>
+                <button type="button" class="btn btn-outline attendance-absent-action" onclick="markAllAbsent()">All Absent</button>
+                <button type="submit" name="save_attendance" class="btn btn-primary attendance-save-button">
+                    <i class="fas fa-save"></i> Save Attendance
+                </button>
+            </div>
+            {% else %}
+            <p class="attendance-saved-note"><i class="fas fa-info-circle"></i> Attendance is already marked for this class and date.</p>
+            {% endif %}
+        </footer>
+    </form>
+</section>
+{% elif selected_subject %}
+<div class="empty-state attendance-empty-state">
+    <i class="fas fa-users"></i>
+    <p>No students in this section</p>
+</div>
+{% else %}
+<div class="empty-state attendance-empty-state">
+    <i class="fas fa-clipboard-check"></i>
+    <p>Select a grade, section, and subject to load the class roster.</p>
+</div>
+{% endif %}
+
+<script>
+var attendanceStatusIcons = {
+    Present: 'fa-check-circle',
+    Absent: 'fa-times-circle',
+    Late: 'fa-clock',
+    Leave: 'fa-file-alt'
+};
+
+function updateCurrentStatus(row, status) {
+    var statusPill = row.querySelector('[data-current-status]');
+    if (!statusPill) return;
+    statusPill.className = 'attendance-current-status status-' + status.toLowerCase();
+    statusPill.innerHTML = '<i class="fas ' + attendanceStatusIcons[status] + '"></i>' + status;
+}
+
+function onStatusRadio(studentId, status) {
+    var row = document.getElementById('row_' + studentId);
+    if (row) {
+        row.classList.remove('status-present', 'status-absent', 'status-late', 'status-leave');
+        row.classList.add('status-' + status.toLowerCase());
+        updateCurrentStatus(row, status);
+    }
+    updateAttCounts();
+}
+
+function setAllAttendance(status) {
+    document.querySelectorAll('.attendance-table tbody tr[data-student-id]').forEach(function(row) {
+        var radio = row.querySelector('input[name="status_' + row.dataset.studentId + '"][value="' + status + '"]');
+        if (radio && !radio.disabled) {
+            radio.checked = true;
+            row.classList.remove('status-present', 'status-absent', 'status-late', 'status-leave');
+            row.classList.add('status-' + status.toLowerCase());
+            updateCurrentStatus(row, status);
+        }
+    });
+    updateAttCounts();
+}
+
+function markAllPresent() { setAllAttendance('Present'); }
+function markAllAbsent() { setAllAttendance('Absent'); }
+
+function updateAttCounts() {
+    if (!document.getElementById('countPresent')) return;
+    var counts = { Present: 0, Absent: 0, Late: 0, Leave: 0 };
+    document.querySelectorAll('input[name^="status_"]:checked').forEach(function(inp) {
+        if (counts[inp.value] !== undefined) counts[inp.value]++;
+    });
+    document.getElementById('countPresent').textContent = counts.Present;
+    document.getElementById('countAbsent').textContent = counts.Absent;
+    document.getElementById('countLate').textContent = counts.Late;
+    document.getElementById('countLeave').textContent = counts.Leave;
+    document.getElementById('presentCount').textContent = counts.Present;
+    document.getElementById('absentCount').textContent = counts.Absent;
+    document.getElementById('lateCount').textContent = counts.Late;
+    document.getElementById('leaveCount').textContent = counts.Leave;
+}
+
+function onGradeChange(gradeId) {
+    var sectionSel = document.getElementById('sectionSelect');
+    var subjectSel = document.getElementById('subjectSelect');
+    if (!gradeId) {
+        sectionSel.innerHTML = '<option value="">All Sections</option>';
+        subjectSel.innerHTML = '<option value="">Select Subject</option>';
+        return;
+    }
+    if (sectionSel) {
+        sectionSel.innerHTML = '<option value="">Loading...</option>';
+        fetch('/api/sections/' + gradeId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                sectionSel.innerHTML = '<option value="">All Sections</option>';
+                data.forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name;
+                    sectionSel.appendChild(opt);
+                });
+            })
+            .catch(function() { sectionSel.innerHTML = '<option value="">Error</option>'; });
+    }
+    if (subjectSel) {
+        subjectSel.innerHTML = '<option value="">Loading...</option>';
+        fetch('/api/subjects/' + gradeId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                subjectSel.innerHTML = '<option value="">Select Subject</option>';
+                data.forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.subject_name;
+                    subjectSel.appendChild(opt);
+                });
+            })
+            .catch(function() { subjectSel.innerHTML = '<option value="">Error</option>'; });
+    }
+}
+
+function onSectionChange(sectionId) {}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateAttCounts();
+    var searchInput = document.getElementById('attendanceSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            var query = searchInput.value.trim().toLowerCase();
+            var visibleCount = 0;
+            document.querySelectorAll('.attendance-table tbody tr[data-student-id]').forEach(function(row) {
+                var matches = row.dataset.search.toLowerCase().includes(query);
+                row.hidden = !matches;
+                if (matches) visibleCount++;
+            });
+            document.getElementById('attendanceNoResults').hidden = visibleCount !== 0;
+        });
+    }
+});
+</script>
+{% endblock %}

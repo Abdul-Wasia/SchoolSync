@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}AI Topic Summarizer{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1><i class="fas fa-robot" style="color:#7C3AED"></i> AI Topic Summarizer</h1>
+    <p>Enter any topic and AI will explain it simply for you</p>
+  </div>
+  <a href="{{ url_for('ai.ai_status') }}" class="btn btn-outline btn-sm" target="_blank">
+    <i class="fas fa-signal"></i> Check API Status
+  </a>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-search"></i> Enter Topic</h3>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>Topic *</label>
+        <input type="text" id="topic-input" class="form-control"
+               placeholder="e.g. Photosynthesis, Pythagoras Theorem, French Revolution">
+      </div>
+      <div class="form-group">
+        <label>Subject</label>
+        <select id="subject-input" class="form-control">
+          <option value="General">General</option>
+          {% for s in subjects %}
+          <option value="{{ s.subject_name }}">{{ s.subject_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Grade Level</label>
+        <select id="level-input" class="form-control">
+          <option>Grade 6</option>
+          <option selected>Grade 8</option>
+          <option>Grade 10</option>
+          <option>University Level</option>
+        </select>
+      </div>
+      <button onclick="summarizeTopic()" class="btn btn-primary btn-full" id="sum-btn">
+        <i class="fas fa-magic"></i> Summarize with AI
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-file-alt"></i> AI Summary</h3>
+      <span id="provider-badge" style="display:none" class="badge badge-purple"></span>
+    </div>
+    <div class="card-body">
+      <div id="sum-loading" style="display:none;text-align:center;padding:40px">
+        <div class="ai-spinner"></div>
+        <p style="margin-top:16px;color:var(--text-muted)">
+          AI is thinking... <span id="loading-provider"></span>
+        </p>
+      </div>
+      <div id="sum-result" style="display:none">
+        <div id="sum-content" class="ai-result-content"></div>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button onclick="copyResult()" class="btn btn-outline btn-sm">
+            <i class="fas fa-copy"></i> Copy
+          </button>
+          <button onclick="window.print()" class="btn btn-outline btn-sm">
+            <i class="fas fa-print"></i> Print
+          </button>
+        </div>
+      </div>
+      <div id="sum-empty" style="text-align:center;padding:40px;color:var(--text-muted)">
+        <i class="fas fa-robot" style="font-size:48px;opacity:0.3"></i>
+        <p style="margin-top:12px">Your AI summary will appear here</p>
+      </div>
+      <div id="sum-error" style="display:none" class="alert alert-danger"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script>
+function summarizeTopic() {
+  var topic = document.getElementById('topic-input').value.trim();
+  var subject = document.getElementById('subject-input').value;
+  var level = document.getElementById('level-input').value;
+
+  if (!topic) {
+    alert('Please enter a topic first!');
+    return;
+  }
+
+  document.getElementById('sum-empty').style.display = 'none';
+  document.getElementById('sum-result').style.display = 'none';
+  document.getElementById('sum-error').style.display = 'none';
+  document.getElementById('sum-loading').style.display = 'block';
+  document.getElementById('sum-btn').disabled = true;
+  document.getElementById('sum-btn').innerHTML =
+    '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+  fetch('/ai/summarize', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({topic, subject, level})
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('sum-loading').style.display = 'none';
+    document.getElementById('sum-btn').disabled = false;
+    document.getElementById('sum-btn').innerHTML =
+      '<i class="fas fa-magic"></i> Summarize with AI';
+
+    if (data.success) {
+      var html = marked.parse(data.summary);
+      document.getElementById('sum-content').innerHTML = html;
+      document.getElementById('sum-result').style.display = 'block';
+      var badge = document.getElementById('provider-badge');
+      badge.style.display = 'inline-block';
+      badge.textContent = 'Powered by ' + data.provider;
+    } else {
+      document.getElementById('sum-error').style.display = 'block';
+      document.getElementById('sum-error').textContent =
+        data.error || 'AI failed. Check your API keys in config.py';
+    }
+  })
+  .catch(err => {
+    document.getElementById('sum-loading').style.display = 'none';
+    document.getElementById('sum-btn').disabled = false;
+    document.getElementById('sum-btn').innerHTML =
+      '<i class="fas fa-magic"></i> Summarize with AI';
+    document.getElementById('sum-error').style.display = 'block';
+    document.getElementById('sum-error').textContent = 'Network error: ' + err;
+  });
+}
+
+function copyResult() {
+  var text = document.getElementById('sum-content').innerText;
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('Copied to clipboard!', 'success'));
+}
+
+document.getElementById('topic-input').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') summarizeTopic();
+});
+</script>
+{% endblock %}
+

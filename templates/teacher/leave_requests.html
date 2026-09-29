@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Requests - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Leave Requests</h1>
+        <p class="page-subtitle">Review student leave applications</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-envelope-open-text"></i> Pending Reviews</h3>
+    </div>
+    <div class="card-body">
+        {% if applications %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Dates</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td>{{ app.student_name }}</td>
+                        <td>{{ app.from_date.strftime('%b %d, %Y') }} - {{ app.to_date.strftime('%b %d, %Y') }}</td>
+                        <td>{{ app.reason }}</td>
+                        <td><span class="badge badge-{{ app.status|lower }}">{{ app.status }}</span></td>
+                        <td>
+                            {% if app.status == 'Pending' %}
+                            <form method="POST" action="{{ url_for('teacher.respond_leave_request') }}" style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                                <input type="hidden" name="leave_id" value="{{ app.id }}">
+                                <input type="text" name="response_note" class="form-control" placeholder="Notes" style="max-width: 160px;">
+                                <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">Approve</button>
+                                <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger">Reject</button>
+                            </form>
+                            {% else %}
+                            {{ app.response_note or 'Reviewed' }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-envelope-open-text"></i>
+            <p>No leave requests found</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

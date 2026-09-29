@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Student Fees - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Fee Records</h1>
+        <p class="page-subtitle">Track your school fee payments</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-wallet"></i> Monthly Fee Status</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Status</th>
+                        <th>Amount</th>
+                        <th>Marked At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for month in months %}
+                    {% set fee = fee_map.get(month) %}
+                    <tr>
+                        <td>{{ month }}</td>
+                        <td>
+                            {% if fee %}
+                                <span class="badge badge-{{ 'success' if fee.status == 'Paid' else 'warning' }}">{{ fee.status }}</span>
+                            {% else %}
+                                <span class="badge badge-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ (fee.amount if fee else 0) | float }}</td>
+                        <td>{{ fee.marked_at.strftime('%b %d, %Y') if fee and fee.marked_at else 'Not yet' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

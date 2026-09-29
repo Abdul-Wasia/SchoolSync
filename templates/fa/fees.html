@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Fees - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Fee Management</h1>
+        <p class="page-subtitle">Track student fee collection</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-wallet"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ total_collected }}</div>
+            <div class="stat-label">Collected</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ paid_count }}</div>
+            <div class="stat-label">Paid</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ pending_count }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-cog"></i> Fee Structure</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('fa.set_fee_structure') }}">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Grade</label>
+                        <select name="grade_id" class="form-control" required>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}">{{ grade.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Month</label>
+                        <input type="text" name="month_year" class="form-control" placeholder="Jan 2025" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" name="amount" class="form-control" min="0" step="0.01" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Save Structure</button>
+            </form>
+            {% if fee_structure %}
+            <div class="table-responsive" style="margin-top: 1rem;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Grade</th>
+                            <th>Month</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in fee_structure %}
+                        <tr>
+                            <td>{{ item.grade_name }}</td>
+                            <td>{{ item.month_year }}</td>
+                            <td>{{ item.amount }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-filter"></i> Student Fee Status</h3>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="form-grid">
+                <div class="form-group">
+                    <label>Grade</label>
+                    <select name="grade_id" class="form-control">
+                        <option value="">All</option>
+                        {% for grade in grades %}
+                        <option value="{{ grade.id }}" {% if grade_id == grade.id %}selected{% endif %}>{{ grade.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Month</label>
+                    <input type="text" name="month" class="form-control" value="{{ selected_month }}">
+                </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </form>
+            {% if students %}
+            <div class="table-responsive" style="margin-top: 1rem;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Grade</th>
+                            <th>Month</th>
+                            <th>Status</th>
+                            <th>Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.grade_name or 'N/A' }}</td>
+                            <td>{{ selected_month }}</td>
+                            <td><span class="badge badge-{{ 'success' if student.fee_status == 'Paid' else 'warning' }}">{{ student.fee_status }}</span></td>
+                            <td>{{ student.fee_amount or 0 }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('fa.mark_fee_paid') }}">
+                                    <input type="hidden" name="student_id" value="{{ student.id }}">
+                                    <input type="hidden" name="month_year" value="{{ selected_month }}">
+                                    <input type="hidden" name="amount" value="{{ student.fee_amount or 0 }}">
+                                    <button type="submit" class="btn btn-sm btn-success">Mark Paid</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-wallet"></i>
+                <p>No student record found</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

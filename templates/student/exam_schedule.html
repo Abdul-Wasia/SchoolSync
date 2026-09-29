@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Exam Schedule - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Exam Schedule</h1>
+        <p class="page-subtitle">Upcoming assessments for {{ student.grade_name }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-calendar-check"></i> Scheduled Exams</h3>
+    </div>
+    <div class="card-body">
+        {% if exams %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Room</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam in exams %}
+                    <tr>
+                        <td>{{ exam.subject_name }}</td>
+                        <td>{{ exam.exam_type }}</td>
+                        <td>{{ exam.exam_date.strftime('%b %d, %Y') }}</td>
+                        <td>{% if exam.start_time %}{{ exam.start_time.strftime('%H:%M') }}{% endif %}{% if exam.end_time %} - {{ exam.end_time.strftime('%H:%M') }}{% endif %}</td>
+                        <td>{{ exam.room or 'To be announced' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-calendar-check"></i>
+            <p>No exams scheduled yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

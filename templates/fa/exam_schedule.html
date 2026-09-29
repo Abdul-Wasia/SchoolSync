@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Exam Schedule - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Exam Schedule</h1>
+        <p class="page-subtitle">Manage and view exam timetable</p>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-plus"></i> Add Exam</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Grade</label>
+                        <select name="grade_id" class="form-control" required>
+                            {% for grade in grades %}
+                            <option value="{{ grade.id }}">{{ grade.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <select name="subject_id" class="form-control" required>
+                            {% for subject in subjects %}
+                            <option value="{{ subject.id }}">{{ subject.subject_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Exam Type</label>
+                        <select name="exam_type" class="form-control" required>
+                            <option value="Quiz">Quiz</option>
+                            <option value="Mid-Term">Mid-Term</option>
+                            <option value="Final-Term">Final-Term</option>
+                            <option value="Assignment">Assignment</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" name="exam_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <input type="time" name="start_time" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time</label>
+                        <input type="time" name="end_time" class="form-control">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Room</label>
+                        <input type="text" name="room" class="form-control" placeholder="Room A1">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Save Exam</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-calendar-alt"></i> Scheduled Exams</h3>
+        </div>
+        <div class="card-body">
+            {% if exams %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Grade</th>
+                            <th>Subject</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Room</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exam in exams %}
+                        <tr>
+                            <td>{{ exam.grade_name }}</td>
+                            <td>{{ exam.subject_name }}</td>
+                            <td>{{ exam.exam_type }}</td>
+                            <td>{{ exam.exam_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ exam.room or 'TBA' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-alt"></i>
+                <p>No exams scheduled</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

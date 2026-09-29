@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}AI Quiz Generator{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="fas fa-question-circle" style="color:#7C3AED"></i> AI Quiz Generator</h1>
+</div>
+
+<div id="quiz-setup">
+  <div class="card" style="max-width:540px;margin:0 auto">
+    <div class="card-header"><h3>Generate Quiz</h3></div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>Topic *</label>
+        <input type="text" id="quiz-topic" class="form-control"
+               placeholder="e.g. World War 2, Algebra, Newton Laws">
+      </div>
+      <div class="form-group">
+        <label>Subject</label>
+        <select id="quiz-subject" class="form-control">
+          {% for s in subjects %}
+          <option value="{{ s.subject_name }}">{{ s.subject_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Number of Questions</label>
+        <select id="quiz-num" class="form-control">
+          <option value="5">5 Questions</option>
+          <option value="10" selected>10 Questions</option>
+        </select>
+      </div>
+      <button onclick="generateQuiz()" class="btn btn-primary btn-full" id="gen-btn">
+        <i class="fas fa-magic"></i> Generate Quiz
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="quiz-area" style="display:none;max-width:640px;margin:0 auto">
+  <div class="card">
+    <div class="card-header">
+      <h3 id="quiz-title">Quiz</h3>
+      <span id="quiz-progress" class="badge badge-blue"></span>
+    </div>
+    <div class="card-body" id="question-container"></div>
+  </div>
+</div>
+
+<div id="quiz-score" style="display:none;max-width:540px;margin:0 auto;text-align:center">
+  <div class="card">
+    <div class="card-body" style="padding:40px">
+      <div style="font-size:60px" id="score-emoji">🎉</div>
+      <h2 id="score-text" style="margin:16px 0"></h2>
+      <p id="score-sub" style="color:var(--text-muted)"></p>
+      <div style="margin-top:24px;display:flex;gap:12px;justify-content:center">
+        <button onclick="restartQuiz()" class="btn btn-primary">Try Again</button>
+        <button onclick="window.print()" class="btn btn-outline">Print Results</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var questions = [], current = 0, score = 0, answered = false;
+
+function generateQuiz() {
+  var topic = document.getElementById('quiz-topic').value.trim();
+  var subject = document.getElementById('quiz-subject').value;
+  var num = document.getElementById('quiz-num').value;
+  if (!topic) { alert('Enter a topic!'); return; }
+
+  document.getElementById('gen-btn').innerHTML =
+    '<i class="fas fa-spinner fa-spin"></i> Generating...';
+  document.getElementById('gen-btn').disabled = true;
+
+  fetch('/ai/generate-quiz', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({topic, subject, num_questions: parseInt(num)})
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('gen-btn').innerHTML = '<i class="fas fa-magic"></i> Generate Quiz';
+    document.getElementById('gen-btn').disabled = false;
+    if (data.success && data.questions.length > 0) {
+      questions = data.questions;
+      current = 0; score = 0;
+      document.getElementById('quiz-setup').style.display = 'none';
+      document.getElementById('quiz-area').style.display = 'block';
+      document.getElementById('quiz-title').textContent =
+        topic + ' — ' + subject;
+      showQuestion();
+    } else {
+      alert(data.error || 'Could not generate quiz. Try a different topic.');
+    }
+  })
+  .catch(() => {
+    document.getElementById('gen-btn').innerHTML = '<i class="fas fa-magic"></i> Generate Quiz';
+    document.getElementById('gen-btn').disabled = false;
+    alert('Network error. Try again.');
+  });
+}
+
+function showQuestion() {
+  if (current >= questions.length) { showScore(); return; }
+  answered = false;
+  var q = questions[current];
+  var progress = (current+1) + ' / ' + questions.length;
+  document.getElementById('quiz-progress').textContent = progress;
+
+  var html = `
+    <div style="margin-bottom:20px">
+      <p style="font-size:15px;font-weight:600;color:var(--text)">
+        Q${current+1}. ${q.question}
+      </p>
+    </div>
+    <div id="options-list" style="display:flex;flex-direction:column;gap:10px">
+      ${q.options.map((opt, i) => `
+        <button class="quiz-option" onclick="selectAnswer('${String.fromCharCode(65+i)}', this)"
+                style="text-align:left;padding:12px 16px;border:1.5px solid var(--border);
+                       border-radius:10px;background:var(--card);color:var(--text);
+                       cursor:pointer;transition:all 0.2s;font-size:13px">
+          ${opt}
+        </button>
+      `).join('')}
+    </div>
+    <div id="explanation-box" style="display:none;margin-top:16px;
+         padding:12px 16px;border-radius:8px;font-size:13px"></div>
+    <div style="margin-top:16px;text-align:right">
+      <button onclick="nextQuestion()" id="next-btn" class="btn btn-primary"
+              style="display:none">
+        ${current+1 < questions.length ? 'Next Question →' : 'See Results 🎉'}
+      </button>
+    </div>`;
+  document.getElementById('question-container').innerHTML = html;
+}
+
+function selectAnswer(selected, btn) {
+  if (answered) return;
+  answered = true;
+  var q = questions[current];
+  var correct = q.correct;
+  var isRight = selected === correct;
+  if (isRight) score++;
+
+  var allBtns = document.querySelectorAll('.quiz-option');
+  allBtns.forEach((b, i) => {
+    var letter = String.fromCharCode(65+i);
+    b.disabled = true;
+    if (letter === correct) {
+      b.style.background = '#DCFCE7';
+      b.style.borderColor = '#16A34A';
+      b.style.color = '#166534';
+    } else if (b === btn && !isRight) {
+      b.style.background = '#FEE2E2';
+      b.style.borderColor = '#DC2626';
+      b.style.color = '#991B1B';
+    }
+  });
+
+  var expBox = document.getElementById('explanation-box');
+  expBox.style.display = 'block';
+  expBox.style.background = isRight ? '#DCFCE7' : '#FEE2E2';
+  expBox.style.color = isRight ? '#166534' : '#991B1B';
+  expBox.innerHTML = (isRight ? '✅ Correct! ' : '❌ Wrong. ') + q.explanation;
+
+  document.getElementById('next-btn').style.display = 'inline-flex';
+}
+
+function nextQuestion() { current++; showQuestion(); }
+
+function showScore() {
+  document.getElementById('quiz-area').style.display = 'none';
+  document.getElementById('quiz-score').style.display = 'block';
+  var pct = Math.round(score/questions.length*100);
+  var emoji = pct>=80 ? '🎉' : pct>=60 ? '👍' : '📚';
+  document.getElementById('score-emoji').textContent = emoji;
+  document.getElementById('score-text').textContent =
+    score + ' / ' + questions.length + ' Correct (' + pct + '%)';
+  var grade = pct>=90?'A+':pct>=80?'A':pct>=70?'B':pct>=60?'C':'Need More Practice';
+  document.getElementById('score-sub').textContent = 'Grade: ' + grade;
+}
+
+function restartQuiz() {
+  document.getElementById('quiz-score').style.display = 'none';
+  document.getElementById('quiz-setup').style.display = 'block';
+}
+</script>
+{% endblock %}
+

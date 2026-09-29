@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}AI Tutor Chat{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1><i class="fas fa-comments" style="color:#7C3AED"></i> AI Tutor</h1>
+    <p>Ask any school subject question and get instant help</p>
+  </div>
+  <select id="chat-subject" class="form-control" style="width:200px">
+    <option value="General">General</option>
+    {% for s in subjects %}
+    <option value="{{ s.subject_name }}">{{ s.subject_name }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<div class="card" style="height:calc(100vh - 240px);display:flex;flex-direction:column">
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
+    <div class="chat-msg ai">
+      <div class="chat-bubble ai-bubble">
+        <i class="fas fa-robot"></i>
+        Hello! I am your AI tutor. Ask me anything about your subjects!
+      </div>
+    </div>
+  </div>
+
+  <div id="typing-indicator" style="display:none;padding:0 20px 8px">
+    <div class="chat-bubble ai-bubble" style="width:70px">
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+    </div>
+  </div>
+
+  <div style="padding:16px;border-top:1px solid var(--border);display:flex;gap:10px">
+    <input type="text" id="chat-input" class="form-control"
+           placeholder="Ask me anything about your subjects..."
+           onkeypress="if(event.key==='Enter') sendChat()">
+    <button onclick="sendChat()" class="btn btn-primary" id="send-btn">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+    <button onclick="clearChat()" class="btn btn-outline btn-sm" title="Clear chat">
+      <i class="fas fa-trash"></i>
+    </button>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script>
+var chatHistory = [];
+
+function sendChat() {
+  var input = document.getElementById('chat-input');
+  var message = input.value.trim();
+  var subject = document.getElementById('chat-subject').value;
+  if (!message) return;
+
+  addMessage(message, 'user');
+  chatHistory.push({role: 'user', content: message});
+  input.value = '';
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('typing-indicator').style.display = 'block';
+  scrollBottom();
+
+  fetch('/ai/chat/send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message, subject, history: chatHistory})
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('typing-indicator').style.display = 'none';
+    document.getElementById('send-btn').disabled = false;
+    if (data.success) {
+      addMessage(data.reply, 'ai');
+      chatHistory.push({role: 'assistant', content: data.reply});
+    } else {
+      addMessage('Sorry, I could not respond right now. Please check your API keys.', 'ai');
+    }
+    scrollBottom();
+  })
+  .catch(() => {
+    document.getElementById('typing-indicator').style.display = 'none';
+    document.getElementById('send-btn').disabled = false;
+    addMessage('Network error. Please try again.', 'ai');
+    scrollBottom();
+  });
+}
+
+function addMessage(text, role) {
+  var msgs = document.getElementById('chat-messages');
+  var div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  var html = marked.parse(text);
+  div.innerHTML = '<div class="chat-bubble ' + role + '-bubble">' + html + '</div>';
+  msgs.appendChild(div);
+}
+
+function scrollBottom() {
+  var msgs = document.getElementById('chat-messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function clearChat() {
+  chatHistory = [];
+  var msgs = document.getElementById('chat-messages');
+  msgs.innerHTML = '<div class="chat-msg ai">\n    <div class="chat-bubble ai-bubble">\n      <i class="fas fa-robot"></i>\n      Hello! I am your AI tutor. Ask me anything about your subjects!\n    </div>\n  </div>';
+}
+</script>
+{% endblock %}
+

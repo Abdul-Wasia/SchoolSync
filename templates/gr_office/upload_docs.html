@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Documents - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Upload Documents</h1>
+        <p class="page-subtitle">Manage and upload student verification documents</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('gr.dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Upload Form Card -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-cloud-upload-alt"></i> Upload Document</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                <input type="hidden" name="action" value="upload_doc">
+                <div class="form-group">
+                    <label><i class="fas fa-user-graduate"></i> Select Student *</label>
+                    <select name="student_id" class="form-control" required id="studentSelect">
+                        <option value="">Choose a student...</option>
+                        {% for student in students %}
+                        <option value="{{ student.id }}" data-grade="{{ student.grade_name }}" data-section="{{ student.section_name }}">{{ student.name }} ({{ student.student_system_id }}) - {{ student.grade_name }} {{ student.section_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-file-alt"></i> Document Type *</label>
+                    <select name="document_type" class="form-control" required>
+                        <option value="">Select type...</option>
+                        <option value="Birth Certificate">Birth Certificate</option>
+                        <option value="Previous School Record">Previous School Record</option>
+                        <option value="ID Proof">ID Proof</option>
+                        <option value="Address Proof">Address Proof</option>
+                        <option value="Transfer Certificate">Transfer Certificate</option>
+                        <option value="Report Card">Report Card</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-file"></i> Choose File *</label>
+                    <input type="file" name="document" class="form-control" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-comment"></i> Remarks</label>
+                    <textarea name="remarks" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">
+                    <i class="fas fa-upload"></i> Upload Document
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Students Checklist Card -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-list-check"></i> Student Verification Status</h3>
+        </div>
+        <div class="card-body">
+            {% if students %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Grade</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>
+                                <strong>{{ student.name }}</strong>
+                                <br><small style="color:#64748B;">{{ student.student_system_id }}</small>
+                            </td>
+                            <td>{{ student.grade_name }} - {{ student.section_name }}</td>
+                            <td>
+                                {% if student.verification_status == 'Verified' %}
+                                    <span class="badge badge-success"><i class="fas fa-check"></i> Verified</span>
+                                {% elif student.verification_status == 'Pending' %}
+                                    <span class="badge badge-warning"><i class="fas fa-clock"></i> Pending</span>
+                                {% else %}
+                                    <span class="badge badge-secondary"><i class="fas fa-question"></i> {{ student.verification_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('gr.verify', student_id=student.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-user-graduate"></i>
+                <p>No students registered yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

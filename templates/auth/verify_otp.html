@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify OTP - SchoolSync</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-left">
+            <div class="login-brand">
+                <i class="fas fa-school"></i>
+                <h1>SchoolSync</h1>
+                <p>School Management System</p>
+            </div>
+        </div>
+        <div class="login-right">
+            <div class="login-form-container">
+                <h2>Verify OTP</h2>
+                <p class="login-subtitle">Enter the 6-digit code sent to your email</p>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    <div class="alerts">
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" action="{{ url_for('auth.verify_otp') }}">
+                    <div class="form-group">
+                        <label>OTP Code</label>
+                        <div class="otp-inputs">
+                            <input type="text" name="otp" maxlength="1" required autocomplete="one-time-code" pattern="[0-9]">
+                            <input type="text" name="otp" maxlength="1" required autocomplete="one-time-code" pattern="[0-9]">
+                            <input type="text" name="otp" maxlength="1" required autocomplete="one-time-code" pattern="[0-9]">
+                            <input type="text" name="otp" maxlength="1" required autocomplete="one-time-code" pattern="[0-9]">
+                            <input type="text" name="otp" maxlength="1" required autocomplete="one-time-code" pattern="[0-9]">
+                            <input type="text" name="otp" maxlength="1" required autocomplete="one-time-code" pattern="[0-9]">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg">Verify Code</button>
+                </form>
+                
+                <div class="login-footer">
+                    <a href="{{ url_for('auth.resend_otp') }}" class="btn btn-outline btn-sm">Resend OTP</a>
+                    <a href="{{ url_for('auth.forgot_password') }}"><i class="fas fa-arrow-left"></i> Back</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-focus next input
+        document.querySelectorAll('.otp-inputs input').forEach((input, index, inputs) => {
+            input.addEventListener('input', () => {
+                if (input.value && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+        });
+        
+        // Combine OTP inputs into single value
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const inputs = document.querySelectorAll('.otp-inputs input');
+            const otp = Array.from(inputs).map(i => i.value).join('');
+            if (otp.length !== 6) {
+                e.preventDefault();
+                alert('Please enter all 6 digits');
+                return;
+            }
+            // Create hidden input with combined value
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'otp';
+            hidden.value = otp;
+            this.appendChild(hidden);
+            // Disable individual inputs so they don't submit
+            inputs.forEach(i => i.disabled = true);
+        });
+    </script>
+</body>
+</html>

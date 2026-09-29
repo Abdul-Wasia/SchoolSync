@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}My Results - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>My Results</h1>
+        <p class="page-subtitle">View your academic performance</p>
+    </div>
+</div>
+
+{% if grouped_results %}
+{% for subject_name, results in grouped_results.items() %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header" style="background: {{ subjectColor(subject_name) }}; color: white;">
+        <h3>{{ subject_name }}</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Exam Type</th>
+                        <th>Date</th>
+                        <th>Marks Obtained</th>
+                        <th>Total Marks</th>
+                        <th>Percentage</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td><span class="badge badge-info">{{ result.exam_type }}</span></td>
+                        <td>{{ result.exam_date.strftime('%b %d, %Y') }}</td>
+                        <td>{{ result.marks_obtained }}</td>
+                        <td>{{ result.total_marks }}</td>
+                        <td>
+                            {% set pct = (result.marks_obtained / result.total_marks * 100) | round(1) %}
+                            <span class="fw-bold {% if pct >= 75 %}text-success{% elif pct >= 60 %}text-warning{% else %}text-danger{% endif %}">{{ pct }}%</span>
+                        </td>
+                        <td>{{ result.grade or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Subject Summary -->
+        <div class="subject-summary">
+            <h4>Subject Summary</h4>
+            <div class="summary-grid">
+                {% set total_obtained = results | sum(attribute='marks_obtained') %}
+                {% set total_max = results | sum(attribute='total_marks') %}
+                {% set avg_pct = (total_obtained / total_max * 100) | round(1) if total_max > 0 else 0 %}
+                <div class="summary-item">
+                    <span class="summary-value {% if avg_pct >= 75 %}text-success{% elif avg_pct >= 60 %}text-warning{% else %}text-danger{% endif %}">{{ avg_pct }}%</span>
+                    <span class="summary-label">Average</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-value">{{ results|length }}</span>
+                    <span class="summary-label">Exams</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-value">{{ total_obtained }}</span>
+                    <span class="summary-label">Total Marks</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-chart-bar"></i>
+    <p>No results available yet</p>
+</div>
+{% endif %}
+{% endblock %}
