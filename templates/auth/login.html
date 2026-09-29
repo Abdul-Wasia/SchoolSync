@@ -76,6 +76,33 @@
             margin-bottom: 28px;
         }
 
+        .demo-login-panel {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #1E3A5F;
+            font-size: 13px;
+        }
+        .demo-login-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .demo-login-grid button {
+            border: 1px solid #93C5FD;
+            border-radius: 8px;
+            padding: 7px 4px;
+            background: white;
+            color: #1D4ED8;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 600;
+        }
+        .demo-login-grid button:hover { background: #DBEAFE; }
+
         .form-group {
             margin-bottom: 20px;
         }
@@ -212,6 +239,15 @@
         <p class="login-subtitle">Welcome Back</p>
         <div class="login-divider"></div>
 
+        <div class="demo-login-panel">
+            <strong>Demo accounts</strong>
+            <div class="demo-login-grid">
+                <button type="button" onclick="useDemo('admin', 'admin123')">Admin</button>
+                <button type="button" onclick="useDemo('teacher1', 'teach123')">Teacher</button>
+                <button type="button" onclick="useDemo('student1', 'stud123')">Student</button>
+            </div>
+        </div>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             <div class="alerts">
@@ -264,6 +300,11 @@
                 field.type = 'password';
                 icon.className = 'fas fa-eye';
             }
+        }
+
+        function useDemo(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
         }
     </script>
 </body>
