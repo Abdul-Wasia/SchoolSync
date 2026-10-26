@@ -8,6 +8,12 @@
         <h1>My Results</h1>
         <p class="page-subtitle">View your academic performance</p>
     </div>
+    <div class="header-actions">
+        <a href="{{ url_for('documents.report_card', student_id=student.id) }}"
+           class="btn btn-primary" target="_blank" rel="noopener">
+            <i class="fas fa-file-lines"></i> Print Report Card
+        </a>
+    </div>
 </div>
 
 {% if grouped_results %}

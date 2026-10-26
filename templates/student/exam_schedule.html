@@ -33,7 +33,7 @@
                         <td>{{ exam.subject_name }}</td>
                         <td>{{ exam.exam_type }}</td>
                         <td>{{ exam.exam_date.strftime('%b %d, %Y') }}</td>
-                        <td>{% if exam.start_time %}{{ exam.start_time.strftime('%H:%M') }}{% endif %}{% if exam.end_time %} - {{ exam.end_time.strftime('%H:%M') }}{% endif %}</td>
+                        <td>{% if exam.start_time %}{{ exam.start_time|format_time }}{% endif %}{% if exam.end_time %} - {{ exam.end_time|format_time }}{% endif %}</td>
                         <td>{{ exam.room or 'To be announced' }}</td>
                     </tr>
                     {% endfor %}

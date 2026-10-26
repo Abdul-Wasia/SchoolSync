@@ -132,8 +132,13 @@ CREATE TABLE `students` (
     `roll_number` VARCHAR(20),
     `dob` DATE,
     `gender` ENUM('Male','Female','Other'),
+    `blood_group` VARCHAR(10),
     `address` TEXT,
     `parent_contact` VARCHAR(20),
+    `emergency_contact_name` VARCHAR(100),
+    `emergency_contact_phone` VARCHAR(20),
+    `emergency_relation` VARCHAR(50),
+    `medical_notes` TEXT,
     `admission_date` DATE,
     `status` ENUM('PendingLogin','Active','Inactive') DEFAULT 'PendingLogin',
     `verification_status` ENUM('Pending','Verified','Rejected') DEFAULT 'Pending',
@@ -301,6 +306,7 @@ CREATE TABLE `submissions` (
     `text_response` TEXT,
     `submitted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `marks_obtained` DECIMAL(5,2),
+    `feedback` TEXT,
     `graded_by` INT,
     `graded_at` TIMESTAMP NULL,
     FOREIGN KEY (`assignment_id`) REFERENCES `assignments`(`id`) ON DELETE CASCADE,
@@ -375,6 +381,8 @@ CREATE TABLE `announcements` (
     `content` TEXT NOT NULL,
     `posted_by` INT NOT NULL,
     `target_role` ENUM('All','Student','Teacher','FA','Principal','GR_Office','IT_Admin') NOT NULL DEFAULT 'All',
+    `priority` ENUM('Normal','High','Urgent') NOT NULL DEFAULT 'Normal',
+    `category` VARCHAR(50) NOT NULL DEFAULT 'General',
     `grade_id` INT,
     `section_id` INT,
     `is_active` TINYINT(1) DEFAULT 1,
@@ -416,6 +424,49 @@ CREATE TABLE `otp_codes` (
     `is_used` TINYINT(1) DEFAULT 0,
     `expires_at` TIMESTAMP NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- 31. school_events
+CREATE TABLE `school_events` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(200) NOT NULL,
+    `description` TEXT,
+    `event_type` ENUM('Holiday','Exam','Sports','Meeting','Academic','Celebration') NOT NULL DEFAULT 'Academic',
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `target_audience` ENUM('All','Student','Teacher','Staff') NOT NULL DEFAULT 'All',
+    `created_by` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- 32. student_conduct_logs
+CREATE TABLE `student_conduct_logs` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `student_id` INT NOT NULL,
+    `recorded_by` INT NOT NULL,
+    `log_type` ENUM('Commendation','Achievement','Discipline_Warning','Attendance_Notice') NOT NULL DEFAULT 'Commendation',
+    `title` VARCHAR(200) NOT NULL,
+    `description` TEXT NOT NULL,
+    `incident_date` DATE NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`recorded_by`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 33. student_certificates
+CREATE TABLE `student_certificates` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `certificate_number` VARCHAR(50) NOT NULL UNIQUE,
+    `student_id` INT NOT NULL,
+    `certificate_type` ENUM('Bonafide','Character','Transfer','Leaving') NOT NULL DEFAULT 'Bonafide',
+    `reason` VARCHAR(255),
+    `issued_date` DATE NOT NULL,
+    `issued_by` INT,
+    `remarks` TEXT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`issued_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ============================================

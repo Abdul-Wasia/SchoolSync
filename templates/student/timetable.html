@@ -37,7 +37,7 @@
                     <div class="timetable-slot" style="background: {{ subjectColor(slot.subject_name) }}">
                         <strong>{{ slot.subject_name }}</strong>
                         <small>{{ slot.teacher_name }}</small>
-                        <small>{{ slot.start_time.strftime('%H:%M') if slot.start_time is not string else slot.start_time[:5] }} - {{ slot.end_time.strftime('%H:%M') if slot.end_time is not string else slot.end_time[:5] }}</small>
+                        <small>{{ slot.start_time|format_time }} - {{ slot.end_time|format_time }}</small>
                         <small>{{ slot.room_type }}</small>
                     </div>
                     {% endfor %}

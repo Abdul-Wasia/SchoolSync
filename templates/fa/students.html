@@ -11,12 +11,12 @@
 </div>
 
 <!-- Filters -->
-<div class="card">
+<div class="card fa-students-filter-card">
     <div class="card-body">
-        <form method="GET" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: end;">
+        <form method="GET" class="fa-students-filter-form">
             <div class="form-group">
-                <label>Grade</label>
-                <select name="grade_id" id="gradeFilter" onchange="filterSections(this.value); this.form.submit()">
+                <label for="gradeFilter">Grade</label>
+                <select name="grade_id" id="gradeFilter" class="form-control">
                     <option value="">All Grades</option>
                     {% for grade in grades %}
                     <option value="{{ grade.id }}" {% if grade.id == selected_grade %}selected{% endif %}>{{ grade.name }}</option>
@@ -24,31 +24,43 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Section</label>
-                <select name="section_id" id="sectionFilter">
+                <label for="sectionFilter">Section</label>
+                <select name="section_id" id="sectionFilter" class="form-control">
                     <option value="">All Sections</option>
                     {% for section in sections %}
-                    <option value="{{ section.id }}" {% if section.id == selected_section %}selected{% endif %} data-grade="{{ section.grade_id }}">{{ section.name }}</option>
+                    <option value="{{ section.id }}" {% if section.id == selected_section %}selected{% endif %}>{{ section.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="form-group">
-                <label>Search</label>
-                <input type="text" name="search" value="{{ search }}" placeholder="Name, ID, Roll...">
+            <div class="form-group fa-students-search">
+                <label for="studentSearch">Search students</label>
+                <div class="fa-students-search-input">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="search" id="studentSearch" name="search" class="form-control"
+                           value="{{ search }}" placeholder="Name, student ID, or roll number">
+                </div>
             </div>
-            <div class="form-group" style="align-self: end;">
-                <button type="submit" class="btn btn-primary">Filter</button>
+            <div class="fa-students-filter-actions">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Apply Filters</button>
+                {% if selected_grade or selected_section or search %}
+                <a href="{{ url_for('fa.students') }}" class="btn btn-outline">Clear</a>
+                {% endif %}
             </div>
         </form>
+        <div class="fa-students-filter-summary" aria-live="polite">
+            <i class="fas fa-users" aria-hidden="true"></i>
+            Showing {{ students|length }} student{{ '' if students|length == 1 else 's' }}
+            {% if selected_grade or selected_section or search %}<span>· Filters applied</span>{% endif %}
+        </div>
     </div>
 </div>
 
 <!-- Students Table -->
-<div class="card" style="margin-top: 1.5rem;">
+<div class="card fa-students-table-card">
     <div class="card-body">
         {% if students %}
         <div class="table-responsive">
-            <table class="table">
+            <table class="table fa-students-table">
                 <thead>
                     <tr>
                         <th>System ID</th>
@@ -59,19 +71,30 @@
                         <th>Roll No</th>
                         <th>Status</th>
                         <th>Verification</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for student in students %}
                     <tr>
-                        <td>{{ student.student_system_id }}</td>
-                        <td>{{ student.name }}</td>
-                        <td>{{ student.father_name }}</td>
+                        <td><span class="fa-student-id">{{ student.student_system_id }}</span></td>
+                        <td><strong class="fa-student-name">{{ student.name }}</strong></td>
+                        <td>{{ student.father_name or '—' }}</td>
                         <td>{{ student.grade_name }}</td>
                         <td>{{ student.section_name }}</td>
                         <td>{{ student.roll_number }}</td>
                         <td><span class="badge badge-{{ 'success' if student.status == 'Active' else 'warning' }}">{{ student.status }}</span></td>
                         <td><span class="badge badge-{{ 'success' if student.verification_status == 'Verified' else 'warning' if student.verification_status == 'Pending' else 'danger' }}">{{ student.verification_status }}</span></td>
+                        <td class="fa-student-actions">
+                            <a href="{{ url_for('documents.report_card', student_id=student.id) }}"
+                               class="btn btn-sm btn-outline" target="_blank" rel="noopener" title="Print report card">
+                                <i class="fas fa-scroll"></i> Report Card
+                            </a>
+                            <a href="{{ url_for('documents.fee_challan', student_id=student.id) }}"
+                               class="btn btn-sm btn-outline" target="_blank" rel="noopener" title="Print fee challan">
+                                <i class="fas fa-file-invoice"></i> Challan
+                            </a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -80,32 +103,11 @@
         {% else %}
         <div class="empty-state">
             <i class="fas fa-user-graduate"></i>
-            <p>No students found</p>
+            <h3>No students found</h3>
+            <p>Try changing your filters or clear them to see all active students.</p>
         </div>
         {% endif %}
     </div>
 </div>
 
-<script>
-function filterSections(gradeId) {
-    const sectionSelect = document.getElementById('sectionFilter');
-    Array.from(sectionSelect.options).forEach(opt => {
-        if (opt.value === '') return;
-        if (gradeId === '' || opt.dataset.grade === gradeId) {
-            opt.style.display = '';
-        } else {
-            opt.style.display = 'none';
-        }
-    });
-    
-    if (gradeId && sectionSelect.value && sectionSelect.options[sectionSelect.selectedIndex].dataset.grade !== gradeId) {
-        sectionSelect.value = '';
-    }
-}
-
-// Initialize on load
-document.addEventListener('DOMContentLoaded', function() {
-    filterSections(document.getElementById('gradeFilter').value);
-});
-</script>
 {% endblock %}

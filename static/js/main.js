@@ -1,3 +1,58 @@
+function updateLiveClock() {
+    var dateElement = document.getElementById('live-date');
+    var timeElement = document.getElementById('live-time');
+    if (!dateElement || !timeElement) return;
+
+    var current = new Date();
+    dateElement.textContent = new Intl.DateTimeFormat(undefined, {
+        weekday: 'short', month: 'short', day: 'numeric'
+    }).format(current);
+    timeElement.textContent = new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric', minute: '2-digit', second: '2-digit'
+    }).format(current);
+}
+
+function getCsrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+}
+
+var nativeFetch = window.fetch.bind(window);
+window.fetch = function(input, init) {
+    init = init || {};
+    var method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    var requestUrl = input instanceof Request ? input.url : input;
+    var url = new URL(requestUrl, window.location.href);
+    var token = getCsrfToken();
+    if (url.origin === window.location.origin &&
+        !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method) && token) {
+        var headers = new Headers(input instanceof Request ? input.headers : undefined);
+        new Headers(init.headers || {}).forEach(function(value, key) {
+            headers.set(key, value);
+        });
+        headers.set('X-CSRFToken', token);
+        init.headers = headers;
+    }
+    return nativeFetch(input, init);
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    var token = getCsrfToken();
+    if (token) {
+        document.querySelectorAll('form').forEach(function(form) {
+            var method = (form.getAttribute('method') || 'GET').toUpperCase();
+            if (['GET', 'DIALOG'].includes(method) || form.querySelector('input[name="csrf_token"]')) return;
+            var field = document.createElement('input');
+            field.type = 'hidden';
+            field.name = 'csrf_token';
+            field.value = token;
+            form.appendChild(field);
+        });
+    }
+    updateLiveClock();
+    window.setInterval(updateLiveClock, 1000);
+});
+
 // ===== MODAL =====
 function showModal(id) {
     var m = document.getElementById(id);
@@ -61,12 +116,6 @@ function toggleUserMenu() {
     dd.classList.toggle('open');
 }
 
-// ===== GLOBAL USER MENU (Logo Dropdown) =====
-function toggleGlobalUserMenu() {
-    var menu = document.getElementById('globalUserMenu');
-    if (menu) menu.classList.toggle('open');
-}
-
 // ── DARK MODE — Complete Working Implementation ─────────────
 
 function initDarkMode() {
@@ -110,11 +159,6 @@ document.addEventListener('click', function(e) {
     if (!e.target.closest('.nav-user-menu')) {
         var dd = document.getElementById('userDropdown');
         if (dd) dd.classList.remove('open');
-    }
-    // Close global logo menu
-    if (!e.target.closest('.logo-dropdown-container')) {
-        var menu = document.getElementById('globalUserMenu');
-        if (menu) menu.classList.remove('open');
     }
 });
 

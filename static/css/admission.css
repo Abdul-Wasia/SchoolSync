@@ -1,0 +1,57 @@
+.public-admission-body {
+    min-height: 100vh;
+    padding: 32px 16px;
+}
+
+.public-admission-page {
+    width: min(100%, 960px);
+    margin: 0 auto;
+}
+
+.public-admission-header {
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.public-admission-brand {
+    color: var(--text);
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.public-admission-brand span {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.public-admission-header p,
+.public-admission-footer {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.public-admission-header p {
+    margin-top: 8px;
+}
+
+.public-admission-footer {
+    margin-top: 24px;
+    text-align: center;
+}
+
+.public-admission-alerts {
+    margin-bottom: 16px;
+}
+
+.public-admission-alerts .alert {
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .public-admission-body {
+        padding: 20px 12px;
+    }
+}

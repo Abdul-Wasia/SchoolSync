@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Monthly Attendance Register - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-table" style="color: #2563eb; margin-right: 8px;"></i> Class Attendance Register (Monthly Master Sheet)</h1>
+        <p class="page-subtitle">Complete monthly attendance matrix with daily status flags, totals, and percentages</p>
+    </div>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            <i class="fas fa-print"></i> Print Master Register
+        </button>
+    </div>
+</div>
+
+<!-- Section & Month Picker -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <form method="GET" class="form-grid" style="align-items: end;">
+            <div class="form-group">
+                <label for="regSection">Class &amp; Section</label>
+                <select name="section_id" id="regSection" class="form-control" onchange="this.form.submit()">
+                    {% for sec in sections %}
+                    <option value="{{ sec.id }}" {% if section_id == sec.id %}selected{% endif %}>
+                        {{ sec.grade_name }} - {{ sec.section_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="regMonth">Target Month</label>
+                <input type="text" id="regMonth" name="month" class="form-control"
+                       value="{{ selected_month }}" placeholder="e.g. Oct 2026">
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Load Register</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Header -->
+<div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, #0f172a, #1e293b); color: white;">
+    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; padding: 1.25rem 1.5rem;">
+        <div>
+            <span style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8;">Class Section</span>
+            <h2 style="font-size: 1.5rem; margin: 4px 0 0 0; color: white;">
+                {{ selected_section.grade_name }} - {{ selected_section.section_name }}
+            </h2>
+            <div style="font-size: 0.88rem; opacity: 0.85; margin-top: 2px;">
+                Month: <strong>{{ selected_month }}</strong> | Total Days: {{ num_days }}
+            </div>
+        </div>
+        <div style="display: flex; gap: 2rem;">
+            <div style="text-align: center;">
+                <div style="font-size: 1.6rem; font-weight: 700; color: #60a5fa;">{{ matrix_rows | length }}</div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; opacity: 0.8;">Students</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 1.6rem; font-weight: 700; color: {% if overall_pct >= 75 %}#4ade80{% else %}#f87171{% endif %};">
+                    {{ overall_pct }}%
+                </div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; opacity: 0.8;">Class Avg</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Register Table -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="table" style="font-size: 0.78rem; border-collapse: collapse; width: 100%; white-space: nowrap;">
+                <thead style="background: #f8fafc;">
+                    <tr>
+                        <th style="padding: 8px 6px; border: 1px solid #e2e8f0; width: 36px; text-align: center;">Roll</th>
+                        <th style="padding: 8px 10px; border: 1px solid #e2e8f0; min-width: 140px;">Student Name</th>
+                        {% for d in days_range %}
+                        <th style="padding: 6px 2px; border: 1px solid #e2e8f0; width: 22px; text-align: center; font-weight: 600;">{{ d }}</th>
+                        {% endfor %}
+                        <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background: #f0fdf4; color: #166534; font-weight: 700;">P</th>
+                        <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background: #fef2f2; color: #991b1b; font-weight: 700;">A</th>
+                        <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background: #fffbeb; color: #92400e; font-weight: 700;">L</th>
+                        <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background: #eff6ff; color: #1e40af; font-weight: 700;">V</th>
+                        <th style="padding: 6px 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: 700;">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if matrix_rows %}
+                        {% for row in matrix_rows %}
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 6px 4px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600; color: #475569;">
+                                {{ row.student.roll_number or '-' }}
+                            </td>
+                            <td style="padding: 6px 10px; border: 1px solid #e2e8f0;">
+                                <strong style="color: #1e293b;">{{ row.student.name }}</strong>
+                            </td>
+                            {% for d in days_range %}
+                                {% set status = row.daily.get(d) %}
+                                <td style="padding: 4px 1px; border: 1px solid #e2e8f0; text-align: center; font-weight: 700;
+                                    {% if status == 'Present' %}background: #dcfce7; color: #15803d;
+                                    {% elif status == 'Absent' %}background: #fee2e2; color: #b91c1c;
+                                    {% elif status == 'Late' %}background: #fef3c7; color: #b45309;
+                                    {% elif status == 'Leave' %}background: #dbeafe; color: #1d4ed8;
+                                    {% else %}color: #cbd5e1;{% endif %}">
+                                    {% if status == 'Present' %}P
+                                    {% elif status == 'Absent' %}A
+                                    {% elif status == 'Late' %}L
+                                    {% elif status == 'Leave' %}V
+                                    {% else %}-{% endif %}
+                                </td>
+                            {% endfor %}
+                            <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: #166534; background: #f0fdf4;">
+                                {{ row.present }}
+                            </td>
+                            <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: #991b1b; background: #fef2f2;">
+                                {{ row.absent }}
+                            </td>
+                            <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: #92400e; background: #fffbeb;">
+                                {{ row.late }}
+                            </td>
+                            <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: #1e40af; background: #eff6ff;">
+                                {{ row.leave }}
+                            </td>
+                            <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: {% if row.percentage >= 75 %}#16a34a{% else %}#dc2626{% endif %};">
+                                {{ row.percentage }}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ num_days + 7 }}" style="padding: 2rem; text-align: center; color: #64748b;">
+                                No students found for this section.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Print Styles -->
+<style>
+@media print {
+    .sidebar, .navbar, .page-header, .header-actions, .card:first-of-type, .no-print {
+        display: none !important;
+    }
+    body {
+        background: white !important;
+        font-size: 8pt !important;
+    }
+    .main-container {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .card {
+        box-shadow: none !important;
+        border: none !important;
+    }
+    @page {
+        size: landscape;
+        margin: 0.5cm;
+    }
+}
+</style>
+{% endblock %}

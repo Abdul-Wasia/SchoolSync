@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Defaulters & Fee Summary - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Defaulters &amp; Fee Summary</h1>
+        <p class="page-subtitle">Students with an outstanding fee balance for {{ selected_month }}</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-blue">
+        <div class="stat-icon"><i class="fas fa-wallet"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ total_expected }}</div>
+            <div class="stat-label">Expected This Month</div>
+        </div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ total_collected }}</div>
+            <div class="stat-label">Collected</div>
+        </div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ total_outstanding }}</div>
+            <div class="stat-label">Outstanding</div>
+        </div>
+    </div>
+    <div class="stat-card stat-purple">
+        <div class="stat-icon"><i class="fas fa-user-clock"></i></div>
+        <div class="stat-info">
+            <div class="stat-number">{{ defaulters | length }}</div>
+            <div class="stat-label">Defaulters</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-filter"></i> Filter</h3>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="form-grid">
+            <div class="form-group">
+                <label>Month</label>
+                <input type="text" name="month" class="form-control" value="{{ selected_month }}" placeholder="e.g. Oct 2026">
+            </div>
+            <div class="form-group">
+                <label>Grade</label>
+                <select name="grade_id" class="form-control">
+                    <option value="">All Grades</option>
+                    {% for grade in grades %}
+                    <option value="{{ grade.id }}" {% if grade_id == grade.id %}selected{% endif %}>{{ grade.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Section</label>
+                <select name="section_id" class="form-control">
+                    <option value="">All Sections</option>
+                    {% for section in sections %}
+                    <option value="{{ section.id }}" {% if section_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="align-self: end;">
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3><i class="fas fa-user-clock"></i> Unpaid / Defaulters</h3>
+        <span class="badge badge-warning">{{ defaulters | length }} students</span>
+    </div>
+    <div class="card-body">
+        {% if defaulters %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>Student</th>
+                        <th>Class</th>
+                        <th>Parent Contact</th>
+                        <th>Amount Due</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in defaulters %}
+                    {% set amount = student.fee_amount or 0 %}
+                    {% set wa_message = 'Dear Parent, this is a reminder that the school fee for ' ~ selected_month ~ ' for ' ~ student.name ~ ' is pending (PKR ' ~ amount ~ '). Kindly pay at your earliest. - SchoolSync' %}
+                    <tr>
+                        <td>{{ student.roll_number or '-' }}</td>
+                        <td><strong>{{ student.name }}</strong><br><small class="text-muted">{{ student.student_system_id }}</small></td>
+                        <td>{{ student.grade_name or 'N/A' }}{% if student.section_name %} - {{ student.section_name }}{% endif %}</td>
+                        <td>{{ student.parent_contact or 'N/A' }}</td>
+                        <td><strong>{{ amount }}</strong></td>
+                        <td><span class="badge badge-warning">{{ student.fee_status }}</span></td>
+                        <td>
+                            <a href="{{ url_for('documents.fee_challan', student_id=student.id, month=selected_month) }}"
+                               class="btn btn-sm btn-outline" title="Print fee challan" target="_blank" rel="noopener">
+                                <i class="fas fa-file-invoice"></i> Challan
+                            </a>
+                            {% if student.parent_contact %}
+                            <a href="{{ wa_link(student.parent_contact, wa_message) }}"
+                               class="btn btn-sm btn-success" target="_blank" rel="noopener" title="Send fee reminder on WhatsApp">
+                                <i class="fab fa-whatsapp"></i> Remind
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <p>No defaulters found for {{ selected_month }}. All fees are clear.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

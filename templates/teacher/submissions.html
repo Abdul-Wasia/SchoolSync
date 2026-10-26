@@ -1,123 +1,172 @@
 {% extends "base.html" %}
 
-{% block title %}View Submissions - SchoolSync{% endblock %}
+{% block title %}Assignment Submissions - SchoolSync{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
         <h1>Assignment Submissions</h1>
-        <p class="page-subtitle">{{ assignment.title }} | {{ assignment.grade_name }} - {{ assignment.section_name }}</p>
+        <p class="page-subtitle">{{ assignment.subject_name }} | {{ assignment.grade_name }} - {{ assignment.section_name }}</p>
     </div>
     <div class="header-actions">
-        <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-outline">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        <a href="{{ url_for('teacher.course', subject_id=assignment.subject_id, section_id=assignment.section_id, _anchor='assignmentsTab') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back to Assignments
         </a>
     </div>
 </div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon blue"><i class="fas fa-users"></i></div>
-        <div class="stat-info">
-            <div class="stat-number">{{ submissions|length }}</div>
-            <div class="stat-label">Total Students</div>
-        </div>
+<section class="submission-assignment-info" aria-labelledby="assignmentTitle">
+    <div>
+        <h2 id="assignmentTitle">{{ assignment.title }}</h2>
+        {% if assignment.instructions %}<p>{{ assignment.instructions }}</p>{% endif %}
     </div>
-    <div class="stat-card">
-        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-info">
-            <div class="stat-number">{{ submissions|selectattr('id')|list|length }}</div>
-            <div class="stat-label">Submitted</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
-        <div class="stat-info">
-            <div class="stat-number">{{ submissions|rejectattr('id')|list|length }}</div>
-            <div class="stat-label">Not Submitted</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
-        <div class="stat-info">
-            <div class="stat-number">{{ submissions|selectattr('marks_obtained', 'none')|list|length }}</div>
-            <div class="stat-label">Pending Grading</div>
-        </div>
-    </div>
+    <dl>
+        <div><dt>Due</dt><dd>{{ assignment.due_date.strftime('%b %d, %Y %H:%M') }}</dd></div>
+        <div><dt>Total Marks</dt><dd>{{ assignment.total_marks }}</dd></div>
+    </dl>
+</section>
+
+<div class="stats-grid submission-stats">
+    <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div><div class="stat-info"><div class="stat-number">{{ total_students }}</div><div class="stat-label">Total Students</div></div></div>
+    <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div class="stat-info"><div class="stat-number">{{ submitted_count }}</div><div class="stat-label">Submitted</div></div></div>
+    <div class="stat-card"><div class="stat-icon red"><i class="fas fa-hourglass-half"></i></div><div class="stat-info"><div class="stat-number">{{ pending_count }}</div><div class="stat-label">Pending</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange"><i class="fas fa-clock"></i></div><div class="stat-info"><div class="stat-number">{{ late_count }}</div><div class="stat-label">Late Submissions</div></div></div>
 </div>
 
-<div class="card" style="margin-top: 1.5rem;">
+<div class="card submission-list-card">
     <div class="card-header">
         <h3><i class="fas fa-list"></i> Student Submissions</h3>
-        <div class="card-header-actions">
-            <span class="text-muted">Due: {{ assignment.due_date.strftime('%b %d, %Y %H:%M') }}</span>
-        </div>
+        <button type="button" class="btn btn-sm btn-outline" onclick="window.location.reload()" title="Refresh submissions">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
     </div>
-    <div class="card-body">
-        {% if submissions %}
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Roll No</th>
-                        <th>Student Name</th>
-                        <th>System ID</th>
-                        <th>Submitted</th>
-                        <th>Marks</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sub in submissions %}
-                    <tr class="{% if sub.id %}table-success{% else %}table-danger{% endif %}">
-                        <td>{{ loop.index }}</td>
-                        <td>{{ sub.roll_number or '-' }}</td>
-                        <td>{{ sub.student_name }}</td>
-                        <td>{{ sub.student_system_id or '-' }}</td>
-                        <td>
-                            {% if sub.id %}
-                            <span class="text-success"><i class="fas fa-check-circle"></i> Yes</span>
-                            <br><small class="text-muted">{{ sub.submitted_at.strftime('%b %d, %H:%M') if sub.submitted_at else '' }}</small>
-                            {% else %}
-                            <span class="text-danger"><i class="fas fa-times-circle"></i> No</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if sub.marks_obtained is not none %}
-                            <strong>{{ sub.marks_obtained }}/{{ assignment.total_marks }}</strong>
-                            {% elif sub.id %}
-                            <span class="text-warning">Not graded</span>
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if sub.id %}
-                            {% if sub.marks_obtained is none %}
-                            <form method="POST" action="{{ url_for('teacher.grade_submission') }}" style="display:flex;align-items:center;gap:4px;" class="grade-form">
-                                <input type="hidden" name="submission_id" value="{{ sub.id }}">
-                                <input type="number" name="marks" class="form-control form-control-sm" style="width:70px;" min="0" max="{{ assignment.total_marks }}" placeholder="Marks" required>
-                                <button type="submit" class="btn btn-sm btn-success" title="Grade"><i class="fas fa-check"></i></button>
-                            </form>
-                            {% else %}
-                            <span class="text-success"><i class="fas fa-check-double"></i> Graded</span>
-                            {% endif %}
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <p>No students enrolled in this section</p>
-        </div>
-        {% endif %}
+    <div class="submission-filters">
+        <label class="submission-search">
+            <span class="sr-only">Search by student name or roll number</span>
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="search" id="submissionSearch" placeholder="Search name or roll number" autocomplete="off">
+        </label>
+        <label>
+            <span class="sr-only">Filter submission status</span>
+            <select id="submissionStatusFilter" aria-label="Filter students by submission status">
+                <option value="all">All Students</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Not Submitted">Not Submitted</option>
+                <option value="Late">Late</option>
+            </select>
+        </label>
+        <span id="submissionResultCount" class="text-muted" aria-live="polite">{{ total_students }} students</span>
     </div>
+
+    {% if submissions %}
+    <div class="table-responsive">
+        <table class="table submission-table">
+            <thead>
+                <tr><th>Roll Number</th><th>Student Name</th><th>Status</th><th>Submission Date</th><th>Submitted File</th><th>Marks</th><th>Feedback</th><th>Action</th></tr>
+            </thead>
+            <tbody id="submissionTableBody">
+                {% for sub in submissions %}
+                <tr data-status="{{ sub.status }}" data-search="{{ sub.student_name|lower }} {{ (sub.roll_number or '')|lower }}">
+                    <td>{{ sub.roll_number or '-' }}</td>
+                    <td>{{ sub.student_name }}</td>
+                    <td>
+                        {% if sub.status == 'Late' %}<span class="badge badge-warning">Late</span>
+                        {% elif sub.status == 'Submitted' %}<span class="badge badge-success">Submitted</span>
+                        {% else %}<span class="badge badge-danger">Not Submitted</span>{% endif %}
+                    </td>
+                    <td>{{ sub.submitted_at.strftime('%b %d, %Y %H:%M') if sub.submitted_at else '-' }}</td>
+                    <td>
+                        {% if sub.file_available %}
+                        <a href="{{ url_for('teacher.submission_file', submission_id=sub.submission_id) }}" target="_blank" rel="noopener noreferrer" aria-label="View submitted file for {{ sub.student_name }}"><i class="fas fa-external-link-alt"></i> View</a>
+                        <a href="{{ url_for('teacher.submission_file', submission_id=sub.submission_id, download=1) }}" aria-label="Download submitted file for {{ sub.student_name }}"><i class="fas fa-download"></i> Download</a>
+                        {% elif sub.file_path %}<span class="text-muted">File unavailable</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>{% if sub.marks_obtained is not none %}<strong>{{ sub.marks_obtained }} / {{ assignment.total_marks }}</strong>{% elif sub.submission_id %}<span class="text-muted">Not graded</span>{% else %}-{% endif %}</td>
+                    <td>{{ sub.feedback or '-' }}</td>
+                    <td>
+                        {% if sub.submission_id %}
+                        <details class="submission-details">
+                            <summary class="btn btn-sm btn-outline">Review</summary>
+                            <div class="submission-detail-panel">
+                                <h4>{{ sub.student_name }}'s Submission</h4>
+                                <p><strong>Status:</strong> {{ sub.status }}</p>
+                                <p><strong>Submitted:</strong> {{ sub.submitted_at.strftime('%b %d, %Y %H:%M') if sub.submitted_at else '-' }}</p>
+                                {% if sub.text_response %}<div class="submission-response"><strong>Text response</strong><p>{{ sub.text_response }}</p></div>{% endif %}
+                                {% if sub.file_available %}
+                                <p><a href="{{ url_for('teacher.submission_file', submission_id=sub.submission_id) }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-eye"></i> View file</a> · <a href="{{ url_for('teacher.submission_file', submission_id=sub.submission_id, download=1) }}"><i class="fas fa-download"></i> Download file</a></p>
+                                {% elif sub.file_path %}<p class="text-muted">The uploaded file is no longer available.</p>{% endif %}
+                                <form method="POST" action="{{ url_for('teacher.grade_submission') }}" class="submission-grade-form">
+                                    <input type="hidden" name="submission_id" value="{{ sub.submission_id }}">
+                                    <label>Marks (out of {{ assignment.total_marks }})
+                                        <input type="number" name="marks" min="0" max="{{ assignment.total_marks }}" step="0.01" value="{{ sub.marks_obtained if sub.marks_obtained is not none else '' }}" required>
+                                    </label>
+                                    <label>Feedback
+                                        <textarea name="feedback" rows="3">{{ sub.feedback or '' }}</textarea>
+                                    </label>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Review</button>
+                                </form>
+                            </div>
+                        </details>
+                        {% else %}-{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr id="submissionNoResults" hidden><td colspan="8" class="text-muted">No students match these search and filter options.</td></tr>
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state submission-empty-state">
+        <i class="fas fa-users"></i>
+        <h3>No students enrolled</h3>
+        <p>There are no active students in {{ assignment.grade_name }} - {{ assignment.section_name }}.</p>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const search = document.getElementById('submissionSearch');
+    const statusFilter = document.getElementById('submissionStatusFilter');
+    const rows = Array.from(document.querySelectorAll('#submissionTableBody tr[data-status]'));
+    const noResults = document.getElementById('submissionNoResults');
+    const resultCount = document.getElementById('submissionResultCount');
+    const params = new URLSearchParams(window.location.search);
+    search.value = params.get('q') || '';
+    statusFilter.value = params.get('status') || 'all';
+
+    function filterSubmissions() {
+        const term = search.value.trim().toLowerCase();
+        const status = statusFilter.value;
+        let visible = 0;
+        rows.forEach(function (row) {
+            const matches = row.dataset.search.includes(term) && (status === 'all' || row.dataset.status === status);
+            row.hidden = !matches;
+            if (matches) visible++;
+        });
+        if (noResults) noResults.hidden = visible > 0;
+        resultCount.textContent = visible + (visible === 1 ? ' student' : ' students');
+        if (search.value) params.set('q', search.value);
+        else params.delete('q');
+        if (statusFilter.value !== 'all') params.set('status', statusFilter.value);
+        else params.delete('status');
+        const query = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''));
+    }
+
+    if (search && statusFilter) {
+        search.addEventListener('input', filterSubmissions);
+        statusFilter.addEventListener('change', filterSubmissions);
+        filterSubmissions();
+    }
+
+    window.setInterval(function () {
+        const focusedFormControl = document.activeElement.matches('input, textarea, select');
+        if (!document.hidden && !document.querySelector('.submission-details[open]') && !focusedFormControl) {
+            window.location.reload();
+        }
+    }, 60000);
+});
+</script>
 {% endblock %}

@@ -23,6 +23,7 @@
                         <th>Status</th>
                         <th>Amount</th>
                         <th>Marked At</th>
+                        <th>Challan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,6 +40,12 @@
                         </td>
                         <td>{{ (fee.amount if fee else 0) | float }}</td>
                         <td>{{ fee.marked_at.strftime('%b %d, %Y') if fee and fee.marked_at else 'Not yet' }}</td>
+                        <td>
+                            <a href="{{ url_for('documents.fee_challan', student_id=student.id, month=month) }}"
+                               class="btn btn-sm btn-outline" target="_blank" rel="noopener">
+                                <i class="fas fa-file-invoice"></i> Print
+                            </a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

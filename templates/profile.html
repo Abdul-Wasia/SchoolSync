@@ -53,7 +53,9 @@
                 <div class="info-row" style="display:flex; gap:10px; padding:12px 0; font-size:14px;">
                     <i class="fas fa-shield-alt" style="color:#16A34A; width:20px;"></i>
                     <strong style="min-width:100px;">Status:</strong>
-                    <span class="badge badge-success">Active</span>
+                    <span class="badge profile-account-status {{ 'badge-success' if user.is_active else 'badge-danger' }}">
+                        {{ 'Active' if user.is_active else 'Inactive' }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -91,9 +93,21 @@
                     <strong style="min-width:120px; color:#64748B;">Address:</strong>
                     <span style="color:#1E293B;">{{ role_info.address or 'N/A' }}</span>
                 </div>
-                <div style="display:flex; gap:10px; padding:12px 0; font-size:14px;">
+                <div style="display:flex; gap:10px; padding:12px 0; border-bottom:1px solid #F1F5F9; font-size:14px;">
                     <strong style="min-width:120px; color:#64748B;">Parent Contact:</strong>
                     <span style="color:#1E293B;">{{ role_info.parent_contact or 'N/A' }}</span>
+                </div>
+                <div style="display:flex; gap:10px; padding:12px 0; border-bottom:1px solid #F1F5F9; font-size:14px;">
+                    <strong style="min-width:120px; color:#64748B;">Blood Group:</strong>
+                    <span class="badge badge-danger">{{ role_info.blood_group or 'Not Recorded' }}</span>
+                </div>
+                <div style="display:flex; gap:10px; padding:12px 0; border-bottom:1px solid #F1F5F9; font-size:14px;">
+                    <strong style="min-width:120px; color:#64748B;">Emergency Contact:</strong>
+                    <span style="color:#1E293B;">{{ role_info.emergency_contact_name or 'N/A' }} ({{ role_info.emergency_relation or 'Contact' }}): {{ role_info.emergency_contact_phone or 'N/A' }}</span>
+                </div>
+                <div style="display:flex; gap:10px; padding:12px 0; font-size:14px;">
+                    <strong style="min-width:120px; color:#64748B;">Medical Notes:</strong>
+                    <span style="color:#1E293B;">{{ role_info.medical_notes or 'No known medical allergies or conditions recorded' }}</span>
                 </div>
 
                 {% elif user.user_type == 'Teacher' %}

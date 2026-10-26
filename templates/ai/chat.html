@@ -1,87 +1,143 @@
 {% extends "base.html" %}
-{% block title %}AI Tutor Chat{% endblock %}
+{% block title %}AI Assistant - SchoolSync{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <h1><i class="fas fa-comments" style="color:#7C3AED"></i> AI Tutor</h1>
-    <p>Ask any school subject question and get instant help</p>
-  </div>
-  <select id="chat-subject" class="form-control" style="width:200px">
-    <option value="General">General</option>
-    {% for s in subjects %}
-    <option value="{{ s.subject_name }}">{{ s.subject_name }}</option>
-    {% endfor %}
-  </select>
-</div>
+<main class="ai-assistant-page">
+  <header class="page-header ai-assistant-header">
+    <div>
+      <span class="ai-assistant-kicker"><i class="fas fa-sparkles" aria-hidden="true"></i> SCHOOLSYNC</span>
+      <h1>AI Assistant</h1>
+      <p class="page-subtitle">{{ session.user_type }} workspace</p>
+    </div>
+    <div class="ai-context-pickers">
+      <label class="ai-subject-picker" for="chat-subject">
+        <span>Subject</span>
+        <select id="chat-subject" class="form-control">
+          <option value="General">General</option>
+          {% for s in subjects %}
+          <option value="{{ s.subject_name }}">{{ s.subject_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="ai-subject-picker ai-material-picker" for="chat-material">
+        <span>Use a teacher's notes</span>
+        <select id="chat-material" class="form-control">
+          <option value="">No specific note</option>
+          {% for material in ai_materials %}
+          <option value="{{ material.id }}" data-subject="{{ material.subject_name }}">
+            {{ material.subject_name }} · {{ material.title }}{% if material.uploaded_at %} · {{ material.uploaded_at.strftime('%b %d, %Y') }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+  </header>
 
-<div class="card" style="height:calc(100vh - 240px);display:flex;flex-direction:column">
-  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
-    <div class="chat-msg ai">
-      <div class="chat-bubble ai-bubble">
-        <i class="fas fa-robot"></i>
-        Hello! I am your AI tutor. Ask me anything about your subjects!
+  <section class="ai-assistant-workspace" aria-label="AI conversation">
+    <aside class="ai-prompt-rail" aria-label="Prompt starters">
+      <span class="ai-assistant-kicker">START A REQUEST</span>
+      {% if session.user_type == 'Teacher' %}
+      <button type="button" class="ai-prompt-starter" data-prompt="Create a lesson plan for [topic] for [grade], including objectives and activities." onclick="usePrompt(this.dataset.prompt)">
+        <i class="fas fa-chalkboard" aria-hidden="true"></i><span>Plan a lesson</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="ai-prompt-starter" data-prompt="Create a short practice quiz about [topic] for [grade]. Include an answer key." onclick="usePrompt(this.dataset.prompt)">
+        <i class="fas fa-list-check" aria-hidden="true"></i><span>Build a quiz</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="ai-prompt-starter" data-prompt="Summarize these teaching notes into key points and a student-friendly explanation: [paste notes]" onclick="usePrompt(this.dataset.prompt)">
+        <i class="fas fa-file-lines" aria-hidden="true"></i><span>Summarize notes</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </button>
+      {% else %}
+      <button type="button" class="ai-prompt-starter" data-prompt="Explain [topic] in simple steps with an example." onclick="usePrompt(this.dataset.prompt)">
+        <i class="fas fa-lightbulb" aria-hidden="true"></i><span>Explain a topic</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="ai-prompt-starter" data-prompt="Quiz me on [topic] with five questions. Ask one question at a time." onclick="usePrompt(this.dataset.prompt)">
+        <i class="fas fa-list-check" aria-hidden="true"></i><span>Practice a quiz</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="ai-prompt-starter" data-prompt="Make a study plan for [subjects] before [exam date]. I can study [hours] each day." onclick="usePrompt(this.dataset.prompt)">
+        <i class="fas fa-calendar-days" aria-hidden="true"></i><span>Make a study plan</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="ai-prompt-starter" data-prompt="Summarize [topic or pasted text] into simple notes and key points." onclick="usePrompt(this.dataset.prompt)">
+        <i class="fas fa-file-lines" aria-hidden="true"></i><span>Summarize a topic</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </button>
+      {% endif %}
+    </aside>
+
+    <section class="ai-chat-panel" aria-label="Conversation">
+      <div class="ai-chat-topline">
+        <span><i class="fas fa-circle" aria-hidden="true"></i> Ready</span>
+        <button type="button" class="ai-clear-chat" onclick="clearChat()" title="Clear conversation" aria-label="Clear conversation">
+          <i class="fas fa-trash-alt" aria-hidden="true"></i>
+        </button>
       </div>
-    </div>
-  </div>
+      <div id="chat-messages" class="ai-chat-messages" role="log" aria-live="polite" aria-relevant="additions">
+        <div class="chat-msg ai">
+          <div class="chat-bubble ai-bubble">
+            <i class="fas fa-robot" aria-hidden="true"></i>
+            Hello{% if session.user_type == 'Teacher' %}, teacher{% else %}, {{ session.user_type|lower }}{% endif %}. What are we working on today?
+          </div>
+        </div>
+      </div>
 
-  <div id="typing-indicator" style="display:none;padding:0 20px 8px">
-    <div class="chat-bubble ai-bubble" style="width:70px">
-      <span class="typing-dot"></span>
-      <span class="typing-dot"></span>
-      <span class="typing-dot"></span>
-    </div>
-  </div>
+      <div id="typing-indicator" class="ai-typing-indicator" hidden>
+        <div class="chat-bubble ai-bubble">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
 
-  <div style="padding:16px;border-top:1px solid var(--border);display:flex;gap:10px">
-    <input type="text" id="chat-input" class="form-control"
-           placeholder="Ask me anything about your subjects..."
-           onkeypress="if(event.key==='Enter') sendChat()">
-    <button onclick="sendChat()" class="btn btn-primary" id="send-btn">
-      <i class="fas fa-paper-plane"></i>
-    </button>
-    <button onclick="clearChat()" class="btn btn-outline btn-sm" title="Clear chat">
-      <i class="fas fa-trash"></i>
-    </button>
-  </div>
-</div>
+      <form id="ai-chat-form" class="ai-chat-composer">
+        <textarea id="chat-input" rows="2" aria-label="Message AI Assistant" placeholder="Ask a question or describe what you need..."></textarea>
+        <div class="ai-composer-actions">
+          <span>Enter to send · Shift + Enter for a new line</span>
+          <button type="submit" class="btn btn-primary" id="send-btn">
+            <span>Send</span> <i class="fas fa-paper-plane" aria-hidden="true"></i>
+          </button>
+        </div>
+      </form>
+    </section>
+  </section>
+</main>
 {% endblock %}
-{% block scripts %}
+{% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
 var chatHistory = [];
+var assistantWelcome = {{ ('Hello, teacher. What are we working on today?' if session.user_type == 'Teacher' else 'Hello. What are we working on today.')|tojson }};
 
-function sendChat() {
+function sendChat(event) {
+  if (event) event.preventDefault();
   var input = document.getElementById('chat-input');
   var message = input.value.trim();
   var subject = document.getElementById('chat-subject').value;
+  var materialId = document.getElementById('chat-material').value;
   if (!message) return;
 
   addMessage(message, 'user');
   chatHistory.push({role: 'user', content: message});
   input.value = '';
   document.getElementById('send-btn').disabled = true;
-  document.getElementById('typing-indicator').style.display = 'block';
+  document.getElementById('typing-indicator').hidden = false;
   scrollBottom();
 
-  fetch('/ai/chat/send', {
+  fetch('{{ url_for("ai.chat_send") }}', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({message, subject, history: chatHistory})
+    body: JSON.stringify({message, subject, material_id: materialId, history: chatHistory})
   })
   .then(r => r.json())
   .then(data => {
-    document.getElementById('typing-indicator').style.display = 'none';
+    document.getElementById('typing-indicator').hidden = true;
     document.getElementById('send-btn').disabled = false;
     if (data.success) {
       addMessage(data.reply, 'ai');
       chatHistory.push({role: 'assistant', content: data.reply});
     } else {
-      addMessage('Sorry, I could not respond right now. Please check your API keys.', 'ai');
+      addMessage(data.reply || data.error || 'The AI request could not be completed.', 'ai');
     }
     scrollBottom();
   })
   .catch(() => {
-    document.getElementById('typing-indicator').style.display = 'none';
+    document.getElementById('typing-indicator').hidden = true;
     document.getElementById('send-btn').disabled = false;
     addMessage('Network error. Please try again.', 'ai');
     scrollBottom();
@@ -105,8 +161,29 @@ function scrollBottom() {
 function clearChat() {
   chatHistory = [];
   var msgs = document.getElementById('chat-messages');
-  msgs.innerHTML = '<div class="chat-msg ai">\n    <div class="chat-bubble ai-bubble">\n      <i class="fas fa-robot"></i>\n      Hello! I am your AI tutor. Ask me anything about your subjects!\n    </div>\n  </div>';
+  msgs.innerHTML = '';
+  addMessage(assistantWelcome, 'ai');
 }
+
+function usePrompt(prompt) {
+  var input = document.getElementById('chat-input');
+  input.value = prompt;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
+
+document.getElementById('ai-chat-form').addEventListener('submit', sendChat);
+document.getElementById('chat-material').addEventListener('change', function() {
+  var selectedOption = this.options[this.selectedIndex];
+  var selectedSubject = selectedOption.dataset.subject;
+  if (selectedSubject) document.getElementById('chat-subject').value = selectedSubject;
+});
+document.getElementById('chat-input').addEventListener('keydown', function(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendChat();
+  }
+});
 </script>
 {% endblock %}
 

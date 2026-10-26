@@ -2,11 +2,182 @@
 
 {% block title %}Principal Dashboard - SchoolSync{% endblock %}
 
+{% block extra_css %}
+<style>
+    .principal-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 13px;
+    }
+    .principal-meta .badge { font-weight: 600; }
+
+    .class-section-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 18px;
+    }
+    .class-section-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--card);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .class-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 18px;
+        background: #F8FAFC;
+        border-bottom: 1px solid var(--border);
+    }
+    .class-section-head h4 { margin: 0 0 2px; font-size: 16px; }
+    .class-section-head p { margin: 0; color: var(--muted); font-size: 12px; }
+    .class-section-body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .class-subject-list { display: flex; flex-direction: column; gap: 6px; }
+    .class-subject-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 13px;
+        padding: 5px 0;
+        border-bottom: 1px dashed var(--border);
+    }
+    .class-subject-row:last-child { border-bottom: none; }
+    .class-subject-row span:last-child { color: var(--muted); white-space: nowrap; }
+    .class-attendance-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+    }
+    .class-attendance-row strong { color: var(--text); }
+    .mini-schedule { display: flex; flex-wrap: wrap; gap: 6px; }
+    .mini-schedule-chip {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #EFF6FF;
+        color: #1D4ED8;
+        border: 1px solid #BFDBFE;
+    }
+
+    .principal-timetable-wrap { overflow-x: auto; }
+    .principal-timetable {
+        display: grid;
+        grid-template-columns: 90px repeat(6, minmax(140px, 1fr));
+        gap: 8px;
+        min-width: 980px;
+    }
+    .principal-timetable .tt-head {
+        background: #F1F5F9;
+        border-radius: 8px;
+        padding: 10px 6px;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        color: #334155;
+    }
+    .principal-timetable .tt-period {
+        background: #F8FAFC;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+    }
+    .principal-timetable .tt-cell {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        min-height: 74px;
+        font-size: 11px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        background: var(--card);
+    }
+    .principal-timetable .tt-cell strong { font-size: 12px; }
+    .principal-timetable .tt-cell small { color: var(--muted); }
+    .principal-timetable .tt-cell.is-empty {
+        background: #F8FAFC;
+        color: #94A3B8;
+        align-items: center;
+        justify-content: center;
+        font-style: italic;
+    }
+    .tt-pill {
+        display: inline-block;
+        margin-top: 4px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 600;
+        width: fit-content;
+        background: #DCFCE7;
+        color: #166534;
+    }
+    .tt-pill.lab { background: #DBEAFE; color: #1E40AF; }
+
+    .section-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .section-picker a {
+        padding: 7px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        text-decoration: none;
+        background: var(--card);
+    }
+    .section-picker a:hover { border-color: var(--primary); color: var(--primary); }
+    .section-picker a.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .teacher-class-chips { display: flex; flex-wrap: wrap; gap: 4px; max-width: 360px; }
+    .teacher-class-chips span {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: #F1F5F9;
+        color: #475569;
+        white-space: nowrap;
+    }
+    .principal-chart-wrap { position: relative; min-height: 300px; }
+    .principal-empty { color: var(--muted); font-size: 13px; padding: 10px 0; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
         <h1>Principal Dashboard</h1>
-        <p class="page-subtitle">School-wide analytics and insights</p>
+        <p class="page-subtitle">Live school-wide view of classes, teachers and attendance</p>
+        <div class="principal-meta">
+            <span class="badge badge-primary">{{ today.strftime('%A, %d %B %Y') }}</span>
+            <span><i class="fas fa-door-open"></i> {{ stats.sections }} sections</span>
+            <span><i class="fas fa-book"></i> {{ stats.subjects }} subjects</span>
+            <span><i class="fas fa-calendar-day"></i> {{ stats.today_classes }} periods scheduled today</span>
+        </div>
     </div>
 </div>
 
@@ -15,21 +186,21 @@
     <div class="stat-card stat-blue">
         <div class="stat-icon"><i class="fas fa-user-graduate"></i></div>
         <div class="stat-info">
-            <div class="stat-number">{{ stats.students }}</div>
+            <div class="stat-number" data-target="{{ stats.students }}">{{ stats.students }}</div>
             <div class="stat-label">Active Students</div>
         </div>
     </div>
     <div class="stat-card stat-green">
         <div class="stat-icon"><i class="fas fa-chalkboard-teacher"></i></div>
         <div class="stat-info">
-            <div class="stat-number">{{ stats.teachers }}</div>
+            <div class="stat-number" data-target="{{ stats.teachers }}">{{ stats.teachers }}</div>
             <div class="stat-label">Teachers</div>
         </div>
     </div>
     <div class="stat-card stat-orange">
         <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
         <div class="stat-info">
-            <div class="stat-number">{{ stats.sections }}</div>
+            <div class="stat-number" data-target="{{ stats.sections }}">{{ stats.sections }}</div>
             <div class="stat-label">Sections</div>
         </div>
     </div>
@@ -42,220 +213,421 @@
     </div>
 </div>
 
+<div class="stats-grid" style="margin-top: 1rem;">
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.present_today }}">{{ stats.present_today }}</div>
+            <div class="stat-label">Present Today</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.absent_today }}">{{ stats.absent_today }}</div>
+            <div class="stat-label">Absent Today</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.late_today }}">{{ stats.late_today }}</div>
+            <div class="stat-label">Late Today</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-clipboard-list"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ stats.records_today }}">{{ stats.records_today }}</div>
+            <div class="stat-label">Attendance Records Today</div>
+        </div>
+    </div>
+</div>
+
 <!-- Tabs -->
-<div class="tab-bar">
-    <button class="tab-btn active" onclick="showTab('studentsTab', this)">
-        <i class="fas fa-user-graduate"></i> Students
-    </button>
-    <button class="tab-btn" onclick="showTab('teachersTab', this)">
-        <i class="fas fa-chalkboard-teacher"></i> Teachers
-    </button>
-    <button class="tab-btn" onclick="showTab('attendanceTrendTab', this)">
-        <i class="fas fa-chart-line"></i> Attendance Trend
-    </button>
-    <button class="tab-btn" onclick="showTab('sectionComparisonTab', this)">
-        <i class="fas fa-layer-group"></i> Section Comparison
-    </button>
-    <button class="tab-btn" onclick="showTab('subjectPerformanceTab', this)">
-        <i class="fas fa-book"></i> Subject Performance
-    </button>
-    <button class="tab-btn" onclick="showTab('lowAttendanceTab', this)">
-        <i class="fas fa-exclamation-triangle"></i> Low Attendance
-    </button>
-</div>
+<div id="principalTabs">
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('overviewTab', this)">
+            <i class="fas fa-school"></i> Overview
+        </button>
+        <button class="tab-btn" onclick="showTab('classesTab', this)">
+            <i class="fas fa-book-open"></i> Classes &amp; Subjects
+        </button>
+        <button class="tab-btn" onclick="showTab('timetableTab', this)">
+            <i class="fas fa-calendar-alt"></i> Weekly Timetable
+        </button>
+        <button class="tab-btn" onclick="showTab('attendanceTab', this)">
+            <i class="fas fa-clipboard-check"></i> Attendance
+        </button>
+        <button class="tab-btn" onclick="showTab('teachersTab', this)">
+            <i class="fas fa-chalkboard-teacher"></i> Teachers
+        </button>
+        <button class="tab-btn" onclick="showTab('studentsTab', this)">
+            <i class="fas fa-user-graduate"></i> Students
+        </button>
+    </div>
 
-<!-- Students Tab -->
-<div class="tab-content active" id="studentsTab">
-    <div class="card">
-        <div class="card-header">
-            <h3>All Students</h3>
-            <span class="badge badge-primary">{{ all_students|length }} students</span>
-        </div>
-        <div class="card-body">
-            {% if all_students %}
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>System ID</th>
-                            <th>Roll No</th>
-                            <th>Grade</th>
-                            <th>Section</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for s in all_students %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ s.name }}</strong></td>
-                            <td><code>{{ s.student_system_id }}</code></td>
-                            <td>{{ s.roll_number }}</td>
-                            <td>{{ s.grade_name }}</td>
-                            <td>{{ s.section_name }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-user-graduate"></i>
-                <p>No students registered yet</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Teachers Tab -->
-<div class="tab-content" id="teachersTab">
-    <div class="card">
-        <div class="card-header">
-            <h3>All Teachers</h3>
-            <span class="badge badge-success">{{ all_teachers|length }} teachers</span>
-        </div>
-        <div class="card-body">
-            {% if all_teachers %}
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Subject</th>
-                            <th>Phone</th>
-                            <th>Email</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in all_teachers %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ t.name }}</strong></td>
-                            <td>{{ t.subject or 'N/A' }}</td>
-                            <td>{{ t.phone or 'N/A' }}</td>
-                            <td>{{ t.email or 'N/A' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <p>No teachers registered yet</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Attendance Trend Tab -->
-<div class="tab-content" id="attendanceTrendTab">
-    <div class="card">
-        <div class="card-header">
-            <h3>Daily Attendance Trend (Last 30 Days)</h3>
-        </div>
-        <div class="card-body">
-            <canvas id="attendanceTrendChart" height="120"></canvas>
-            <script>
-            new Chart(document.getElementById('attendanceTrendChart'), {
-                type: 'line',
-                data: {
-                    labels: {{ trend | map(attribute='date') | list | tojson }},
-                    datasets: [{
-                        label: 'Attendance %',
-                        data: {{ trend | map(attribute='pct') | list | tojson }},
-                        borderColor: '#2563EB',
-                        backgroundColor: 'rgba(37,99,235,0.1)',
-                        borderWidth: 2.5,
-                        pointBackgroundColor: '#2563EB',
-                        pointRadius: 4,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.parsed.y + '%'
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            min: 0, max: 100,
-                            ticks: { callback: v => v + '%' },
-                            grid: { color: 'rgba(0,0,0,0.05)' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-            </script>
-        </div>
-    </div>
-</div>
-<div class="tab-content" id="attendanceTrendTab">
-    <div class="card">
-        <div class="card-header">
-            <h3>Daily Attendance Trend (Last 30 Days)</h3>
-        </div>
-        <div class="card-body">
-            <canvas id="attendanceTrendChart" height="120"></canvas>
-            <script>
-            new Chart(document.getElementById('attendanceTrendChart'), {
-                type: 'line',
-                data: {
-                    labels: {{ trend | map(attribute='date') | list | tojson }},
-                    datasets: [{
-                        label: 'Attendance %',
-                        data: {{ trend | map(attribute='pct') | list | tojson }},
-                        borderColor: '#2563EB',
-                        backgroundColor: 'rgba(37,99,235,0.1)',
-                        borderWidth: 2.5,
-                        pointBackgroundColor: '#2563EB',
-                        pointRadius: 4,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.parsed.y + '%'
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            min: 0, max: 100,
-                            ticks: { callback: v => v + '%' },
-                            grid: { color: 'rgba(0,0,0,0.05)' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-            </script>
-        </div>
-    </div>
-</div>        </div>
+    <!-- ================= OVERVIEW ================= -->
+    <div class="tab-content active" id="overviewTab">
         <div class="card">
             <div class="card-header">
-                <h3>Teacher Attendance (Last 30 Days)</h3>
+                <h3><i class="fas fa-layer-group"></i> Classes, Sections &amp; Assigned Teachers</h3>
+                <span class="badge badge-primary">{{ section_cards|length }} sections</span>
+            </div>
+            <div class="card-body">
+                {% if section_cards %}
+                <div class="class-section-grid">
+                    {% for section in section_cards %}
+                    <div class="class-section-card">
+                        <div class="class-section-head">
+                            <div>
+                                <h4>{{ section.grade_name }} &ndash; {{ section.section_name }}</h4>
+                                <p>{{ section.student_count }} students &middot; {{ section.subject_count }} subjects &middot; capacity {{ section.capacity }}</p>
+                            </div>
+                            <span class="badge badge-{{ 'success' if section.today_pct >= 75 else 'warning' if section.today_pct >= 60 else 'danger' }}">
+                                {{ section.today_pct }}%
+                            </span>
+                        </div>
+                        <div class="class-section-body">
+                            <div class="class-subject-list">
+                                {% for subject in section.subjects %}
+                                <div class="class-subject-row">
+                                    <span><strong>{{ subject.subject_name }}</strong>
+                                        <span class="badge badge-{{ 'info' if subject.type == 'Practical' else 'secondary' }}" style="font-size:10px;">{{ subject.type }}</span>
+                                    </span>
+                                    <span><i class="fas fa-user-tie"></i> {{ subject.teacher_name }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="class-attendance-row">
+                                <span><i class="fas fa-check-circle" style="color:#16A34A;"></i> Present <strong>{{ section.today_present }}</strong></span>
+                                <span><i class="fas fa-times-circle" style="color:#DC2626;"></i> Absent <strong>{{ section.today_absent }}</strong></span>
+                                <span><i class="fas fa-list"></i> Records <strong>{{ section.today_total }}</strong></span>
+                            </div>
+
+                            {% if section.today_schedule %}
+                            <div class="mini-schedule">
+                                {% for slot in section.today_schedule %}
+                                <span class="mini-schedule-chip" title="{{ slot.teacher_name }} &middot; {{ slot.start_time }}-{{ slot.end_time }}">
+                                    P{{ slot.period }} {{ slot.subject_name }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="principal-empty" style="margin:0;">No periods scheduled today.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-layer-group"></i>
+                    <p>No sections configured yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CLASSES & SUBJECTS ================= -->
+    <div class="tab-content" id="classesTab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-book-open"></i> Subject &amp; Teacher Assignments</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Grade</th>
+                                <th>Section</th>
+                                <th>Subject</th>
+                                <th>Type</th>
+                                <th>Assigned Teacher</th>
+                                <th>Students</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for section in section_cards %}
+                                {% for subject in section.subjects %}
+                                <tr>
+                                    <td>{{ section.grade_name }}</td>
+                                    <td>{{ section.section_name }}</td>
+                                    <td><strong>{{ subject.subject_name }}</strong></td>
+                                    <td><span class="badge badge-{{ 'info' if subject.type == 'Practical' else 'secondary' }}">{{ subject.type }}</span></td>
+                                    <td><i class="fas fa-user-tie" style="color:#64748B;"></i> {{ subject.teacher_name }}</td>
+                                    <td>{{ section.student_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= WEEKLY TIMETABLE ================= -->
+    <div class="tab-content" id="timetableTab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-calendar-alt"></i> Weekly Timetable</h3>
+                {% if selected_section %}
+                <span class="badge badge-primary">{{ selected_section.grade_name }} &ndash; {{ selected_section.section_name }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="section-picker">
+                    {% for section in timetable_sections %}
+                    <a href="{{ url_for('principal.dashboard', section_id=section.id) }}#timetableTab"
+                       class="{% if section.id == selected_section_id %}active{% endif %}"
+                       onclick="event.preventDefault(); window.location.href='{{ url_for('principal.dashboard', section_id=section.id) }}';">
+                        {{ section.label }}
+                    </a>
+                    {% endfor %}
+                </div>
+
+                {% if weekly %}
+                <div class="principal-timetable-wrap">
+                    <div class="principal-timetable">
+                        <div class="tt-head">Period</div>
+                        {% for day in days %}
+                        <div class="tt-head">{{ day }}</div>
+                        {% endfor %}
+
+                        {% for period in periods %}
+                        <div class="tt-period">Period {{ period }}</div>
+                        {% for day in days %}
+                        {% set slot = weekly.get(day, {}).get(period) %}
+                        <div class="tt-cell {% if not slot %}is-empty{% endif %}">
+                            {% if slot %}
+                            <strong>{{ slot.subject_name }}</strong>
+                            <small><i class="fas fa-user-tie"></i> {{ slot.teacher_name }}</small>
+                            <small><i class="fas fa-clock"></i> {{ slot.start_time }} - {{ slot.end_time }}</small>
+                            <span class="tt-pill {% if slot.room_type == 'Lab' %}lab{% endif %}">{{ slot.room_type }}</span>
+                            {% else %}
+                            Free
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-calendar-alt"></i>
+                    <p>No timetable configured for this section</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h3><i class="fas fa-calendar-day"></i> Today's Schedule ({{ today_name }})</h3>
+                <span class="badge badge-info">{{ today_schedule|length }} periods</span>
+            </div>
+            <div class="card-body">
+                {% if today_schedule %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Time</th>
+                                <th>Section</th>
+                                <th>Subject</th>
+                                <th>Teacher</th>
+                                <th>Room</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slot in today_schedule %}
+                            <tr>
+                                <td><strong>{{ slot.period }}</strong></td>
+                                <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
+                                <td>{{ slot.section_label }}</td>
+                                <td>{{ slot.subject_name }}</td>
+                                <td>{{ slot.teacher_name }}</td>
+                                <td><span class="badge badge-{{ 'info' if slot.room_type == 'Lab' else 'secondary' }}">{{ slot.room_type }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-calendar-day"></i>
+                    <p>No classes scheduled for today</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ATTENDANCE ================= -->
+    <div class="tab-content" id="attendanceTab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-line"></i> Daily Attendance Trend (Last 30 Days)</h3>
+            </div>
+            <div class="card-body">
+                <div class="principal-chart-wrap">
+                    <canvas id="attendanceTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 1.5rem;">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-bar"></i> Attendance by Section</h3>
+                </div>
+                <div class="card-body">
+                    <div class="principal-chart-wrap">
+                        <canvas id="sectionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-table"></i> Section Summary</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Section</th>
+                                    <th>Records</th>
+                                    <th>Present</th>
+                                    <th>Absent</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in section_comparison %}
+                                <tr>
+                                    <td><strong>{{ row.grade_name }} - {{ row.section_name }}</strong></td>
+                                    <td>{{ row.total_records }}</td>
+                                    <td>{{ row.present_count }}</td>
+                                    <td>{{ row.absent_count }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ 'success' if row.avg_percentage >= 75 else 'warning' if row.avg_percentage >= 60 else 'danger' }}">
+                                            {{ row.avg_percentage }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h3><i class="fas fa-book"></i> Attendance by Subject &amp; Teacher (Last 30 Days)</h3>
+                <span class="badge badge-primary">{{ subject_attendance|length }} subject classes</span>
+            </div>
+            <div class="card-body">
+                {% if subject_attendance %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Grade</th>
+                                <th>Section</th>
+                                <th>Subject</th>
+                                <th>Teacher</th>
+                                <th>Records</th>
+                                <th>Present</th>
+                                <th>Absent</th>
+                                <th>Attendance %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in subject_attendance %}
+                            <tr>
+                                <td>{{ row.grade_name }}</td>
+                                <td>{{ row.section_name }}</td>
+                                <td><strong>{{ row.subject_name }}</strong></td>
+                                <td>{{ row.teacher_name }}</td>
+                                <td>{{ row.total_records }}</td>
+                                <td>{{ row.present_count }}</td>
+                                <td>{{ row.absent_count }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'success' if row.percentage >= 75 else 'warning' if row.percentage >= 60 else 'danger' }}">
+                                        {{ row.percentage }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-check"></i>
+                    <p>No attendance records yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Students Below 75% Attendance</h3>
+                <span class="badge badge-warning">{{ low_attendance|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if low_attendance %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Roll No</th>
+                                <th>Grade / Section</th>
+                                <th>Classes</th>
+                                <th>Present</th>
+                                <th>Attendance %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in low_attendance %}
+                            <tr>
+                                <td><strong>{{ student.name }}</strong><br><small>{{ student.student_system_id }}</small></td>
+                                <td>{{ student.roll_number }}</td>
+                                <td>{{ student.grade_name }} - {{ student.section_name }}</td>
+                                <td>{{ student.total_classes }}</td>
+                                <td>{{ student.present_count }}</td>
+                                <td><span class="badge badge-danger">{{ student.percentage }}%</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-check-circle"></i>
+                    <p>All students have attendance above 75%</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TEACHERS ================= -->
+    <div class="tab-content" id="teachersTab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chalkboard-teacher"></i> Teachers &amp; Assigned Classes</h3>
+                <span class="badge badge-success">{{ teachers|length }} teachers</span>
             </div>
             <div class="card-body">
                 {% if teachers %}
@@ -263,23 +635,40 @@
                     <table class="table">
                         <thead>
                             <tr>
+                                <th>#</th>
                                 <th>Teacher</th>
-                                <th>Subject</th>
+                                <th>Primary Subject</th>
+                                <th>Assigned Classes</th>
+                                <th>Days Recorded</th>
                                 <th>Present</th>
                                 <th>Absent</th>
-                                <th>Attendance</th>
+                                <th>Attendance %</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for teacher in teachers %}
                             <tr>
-                                <td>{{ teacher.name }}</td>
-                                <td>{{ teacher.subject }}</td>
+                                <td>{{ loop.index }}</td>
+                                <td>
+                                    <strong>{{ teacher.name }}</strong><br>
+                                    <small>{{ teacher.qualification or '' }}</small>
+                                </td>
+                                <td>{{ teacher.subject or 'N/A' }}</td>
+                                <td>
+                                    <div class="teacher-class-chips">
+                                        {% for class in teacher.classes %}
+                                        <span>{{ class.subject_name }} &middot; {{ class.section_label }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>{{ teacher.days_recorded }}</td>
                                 <td>{{ teacher.present_days }}</td>
                                 <td>{{ teacher.absent_days }}</td>
                                 <td>
-                                    {% if teacher.attendance_pct is not none %}
-                                    <span class="badge badge-{{ 'success' if teacher.attendance_pct >= 75 else 'warning' if teacher.attendance_pct >= 60 else 'danger' }}">{{ teacher.attendance_pct }}%</span>
+                                    {% if teacher.attendance_pct is not none and teacher.days_recorded %}
+                                    <span class="badge badge-{{ 'success' if teacher.attendance_pct >= 75 else 'warning' if teacher.attendance_pct >= 60 else 'danger' }}">
+                                        {{ teacher.attendance_pct }}%
+                                    </span>
                                     {% else %}
                                     <span class="text-muted">N/A</span>
                                     {% endif %}
@@ -291,150 +680,189 @@
                 </div>
                 {% else %}
                 <div class="empty-state">
-                    <i class="fas fa-user-check"></i>
-                    <p>No teacher attendance data</p>
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <p>No teachers registered yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-bar"></i> Subject Performance (Average Marks)</h3>
+            </div>
+            <div class="card-body">
+                {% if subject_performance %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Grade</th>
+                                <th>Exams</th>
+                                <th>Average %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in subject_performance %}
+                            <tr>
+                                <td>{{ row.subject_name }}</td>
+                                <td>{{ row.grade_name }}</td>
+                                <td>{{ row.exam_count }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'success' if row.avg_percentage >= 75 else 'warning' if row.avg_percentage >= 60 else 'danger' }}">
+                                        {{ row.avg_percentage }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-chart-bar"></i>
+                    <p>No results recorded yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= STUDENTS ================= -->
+    <div class="tab-content" id="studentsTab">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-user-graduate"></i> All Students</h3>
+                <span class="badge badge-primary">{{ all_students|length }} students</span>
+            </div>
+            <div class="card-body">
+                {% if all_students %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>System ID</th>
+                                <th>Roll No</th>
+                                <th>Grade</th>
+                                <th>Section</th>
+                                <th>Classes</th>
+                                <th>Present</th>
+                                <th>Attendance %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in all_students %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong>{{ s.name }}</strong></td>
+                                <td><code>{{ s.student_system_id }}</code></td>
+                                <td>{{ s.roll_number }}</td>
+                                <td>{{ s.grade_name }}</td>
+                                <td>{{ s.section_name }}</td>
+                                <td>{{ s.total_records }}</td>
+                                <td>{{ s.present_records }}</td>
+                                <td>
+                                    <span class="badge badge-{{ 'success' if s.percentage >= 75 else 'warning' if s.percentage >= 60 else 'danger' }}">
+                                        {{ s.percentage }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-user-graduate"></i>
+                    <p>No students registered yet</p>
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<!-- Section Comparison Tab -->
-<div class="tab-content" id="sectionComparisonTab">
-    <div class="card">
-        <div class="card-header">
-            <h3>Section Comparison (Last 30 Days)</h3>
-        </div>
-        <div class="card-body">
-            <canvas id="sectionChart" height="120"></canvas>
-            <script>
-            const sectionLabels = {{ sections_data | map(attribute='section_name') | list | tojson }};
-            const sectionData   = {{ sections_data | map(attribute='avg_att') | list | tojson }};
-            new Chart(document.getElementById('sectionChart'), {
-                type: 'bar',
-                data: {
-                    labels: sectionLabels,
-                    datasets: [{
-                        label: 'Avg Attendance %',
-                        data: sectionData,
-                        backgroundColor: sectionData.map(v => v >= 75 ? 'rgba(22,163,74,0.8)' : v >= 60 ? 'rgba(217,119,6,0.8)' : 'rgba(220,38,38,0.8)',
-                        borderRadius: 8,
-                        borderSkipped: false
-                    }]
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var trendCanvas = document.getElementById('attendanceTrendChart');
+    if (trendCanvas) {
+        new Chart(trendCanvas, {
+            type: 'line',
+            data: {
+                labels: {{ trend_data | map(attribute='date') | list | tojson }},
+                datasets: [{
+                    label: 'Attendance %',
+                    data: {{ trend_data | map(attribute='pct') | list | tojson }},
+                    borderColor: '#2563EB',
+                    backgroundColor: 'rgba(37,99,235,0.10)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#2563EB',
+                    pointRadius: 3,
+                    fill: true,
+                    tension: 0.35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function (ctx) { return ctx.parsed.y + '%'; } } }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.parsed.y + '%'
-                            }
-                        }
+                scales: {
+                    y: {
+                        min: 0, max: 100,
+                        ticks: { callback: function (v) { return v + '%'; } },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
                     },
-                    scales: {
-                        y: {
-                            min: 0, max: 100,
-                            ticks: { callback: v => v + '%' },
-                            grid: { color: 'rgba(0,0,0,0.05)' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
-                    }
+                    x: { grid: { display: false } }
                 }
-            });
-            </script>
-        </div>
-    </div>
-</div>
-<div class="tab-content" id="sectionComparisonTab">
-    <div class="card">
-        <div class="card-header">
-            <h3>Section Comparison (Last 30 Days)</h3>
-        </div>
-        <div class="card-body">
-            <canvas id="sectionChart" height="120"></canvas>
-            <script>
-            const sectionLabels = {{ sections_data | map(attribute='section_name') | list | tojson }};
-            const sectionData   = {{ sections_data | map(attribute='avg_att') | list | tojson }};
-            new Chart(document.getElementById('sectionChart'), {
-                type: 'bar',
-                data: {
-                    labels: sectionLabels,
-                    datasets: [{
-                        label: 'Avg Attendance %',
-                        data: sectionData,
-                        backgroundColor: sectionData.map(v => v >= 75 ? 'rgba(22,163,74,0.8)' : v >= 60 ? 'rgba(217,119,6,0.8)' : 'rgba(220,38,38,0.8)',
-                        borderRadius: 8,
-                        borderSkipped: false
-                    }]
+            }
+        });
+    }
+
+    var sectionCanvas = document.getElementById('sectionChart');
+    if (sectionCanvas) {
+        var labels = {{ section_comparison | map(attribute='grade_name') | list | tojson }};
+        var names = {{ section_comparison | map(attribute='section_name') | list | tojson }};
+        var data = {{ section_comparison | map(attribute='avg_percentage') | list | tojson }};
+        new Chart(sectionCanvas, {
+            type: 'bar',
+            data: {
+                labels: labels.map(function (label, index) { return label + ' - ' + names[index]; }),
+                datasets: [{
+                    label: 'Average Attendance %',
+                    data: data,
+                    backgroundColor: data.map(function (value) {
+                        return value >= 75 ? 'rgba(22,163,74,0.8)' : value >= 60 ? 'rgba(217,119,6,0.8)' : 'rgba(220,38,38,0.8)';
+                    }),
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function (ctx) { return ctx.parsed.y + '%'; } } }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.parsed.y + '%'
-                            }
-                        }
+                scales: {
+                    y: {
+                        min: 0, max: 100,
+                        ticks: { callback: function (v) { return v + '%'; } },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
                     },
-                    scales: {
-                        y: {
-                            min: 0, max: 100,
-                            ticks: { callback: v => v + '%' },
-                            grid: { color: 'rgba(0,0,0,0.05)' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
-                    }
+                    x: { grid: { display: false } }
                 }
-            });
-            </script>
-        </div>
-    </div>
-</div><!-- Low Attendance Tab -->
-<div class="tab-content" id="lowAttendanceTab">
-    <div class="card">
-        <div class="card-header">
-            <h3>Low Attendance Students (< 75%)</h3>
-        </div>
-        <div class="card-body">
-            {% if low_attendance %}
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Grade/Section</th>
-                            <th>Classes</th>
-                            <th>Present</th>
-                            <th>Attendance %</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for student in low_attendance %}
-                        <tr>
-                            <td>{{ student.name }} ({{ student.student_system_id }})</td>
-                            <td>{{ student.grade_name }} - {{ student.section_name }}</td>
-                            <td>{{ student.total_classes }}</td>
-                            <td>{{ student.present_count }}</td>
-                            <td><span class="badge badge-danger">{{ student.percentage }}%</span></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-check-circle"></i>
-                <p>All students have good attendance!</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

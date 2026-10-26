@@ -1,0 +1,96 @@
+{% extends "admission/base.html" %}
+
+{% block title %}Student Admission - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Student Admission</h1>
+        <p class="page-subtitle">Submit a new application for review by the GR Office.</p>
+    </div>
+    <a class="btn btn-outline" href="{{ url_for('admission.status_lookup') }}">Check an existing application</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if not admissions_open %}
+        <div class="alert alert-warning" role="status">
+            Admissions are currently closed. Existing applicants can still check their application status.
+        </div>
+        {% else %}
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('admission.public_form') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="applicant_name">Applicant full name *</label>
+                    <input id="applicant_name" name="applicant_name" class="form-control" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="dob">Date of birth *</label>
+                    <input id="dob" type="date" name="dob" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="gender">Gender *</label>
+                    <select id="gender" name="gender" class="form-control" required>
+                        <option value="">Select</option>
+                        <option>Female</option>
+                        <option>Male</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="contact_phone">Applicant contact number *</label>
+                    <input id="contact_phone" name="contact_phone" class="form-control" maxlength="20" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email (optional)</label>
+                    <input id="email" type="email" name="email" class="form-control" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="guardian_name">Parent/guardian full name *</label>
+                    <input id="guardian_name" name="guardian_name" class="form-control" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="guardian_phone">Parent/guardian contact number *</label>
+                    <input id="guardian_phone" name="guardian_phone" class="form-control" maxlength="20" required>
+                </div>
+                <div class="form-group">
+                    <label for="applied_grade_id">Grade/class applied for *</label>
+                    <select id="applied_grade_id" name="applied_grade_id" class="form-control" required>
+                        <option value="">Select a grade</option>
+                        {% for grade in grades %}
+                        <option value="{{ grade.id }}">{{ grade.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="previous_school">Previous school *</label>
+                    <input id="previous_school" name="previous_school" class="form-control" maxlength="150" required>
+                </div>
+                <div class="form-group">
+                    <label for="previous_grade">Previous grade/class *</label>
+                    <input id="previous_grade" name="previous_grade" class="form-control" maxlength="50" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="address">Residential address *</label>
+                    <textarea id="address" name="address" class="form-control" rows="3" required></textarea>
+                </div>
+            </div>
+
+            <h2>Documents</h2>
+            <p class="text-muted">Files are private. Birth Certificate, Report Card, and Parent/Guardian CNIC are required before enrollment. Missing files can be provided later if requested.</p>
+            <div class="form-grid">
+                {% for category in categories %}
+                <div class="form-group">
+                    <label for="{{ upload_fields[category] }}">{{ category }}{% if category in required_documents %} *{% endif %}</label>
+                    <input id="{{ upload_fields[category] }}" type="file" name="{{ upload_fields[category] }}"
+                           class="form-control" accept=".pdf,.docx,.jpg,.jpeg,.png">
+                </div>
+                {% endfor %}
+            </div>
+            <button class="btn btn-primary" type="submit">Submit application</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

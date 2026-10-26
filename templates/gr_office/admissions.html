@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Admissions - GR Office{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Admission applications</h1>
+        <p class="page-subtitle">Review private submissions and manage public intake.</p>
+    </div>
+    <form method="POST" action="{{ url_for('admission.toggle_intake') }}">
+        <input type="hidden" name="action" value="{{ 'close' if intake_open else 'open' }}">
+        <button type="submit" class="btn {{ 'btn-outline-danger' if intake_open else 'btn-primary' }}">
+            {{ 'Close admissions' if intake_open else 'Open admissions' }}
+        </button>
+    </form>
+</div>
+<div class="card">
+    <div class="card-body">
+        <p>Intake is <strong>{{ 'OPEN' if intake_open else 'CLOSED' }}</strong>.
+            Public application link:
+            <a href="{{ public_url }}" target="_blank" rel="noopener noreferrer">Open application form in a new tab</a>
+        </p>
+        <p class="text-muted">Share this link with applicants: <a href="{{ public_url }}" target="_blank" rel="noopener noreferrer">{{ public_url }}</a></p>
+        <div class="stats-grid">
+            <div class="stat-card admission-stat-card"><div><div class="stat-num">{{ total }}</div><div class="stat-label">All applications</div></div></div>
+            {% for status, count in counts.items() %}
+            <div class="stat-card admission-stat-card"><div><div class="stat-num">{{ count }}</div><div class="stat-label">{{ status }}</div></div></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body">
+        <form method="GET" class="admin-user-filter-form">
+            <div class="filter-item">
+                <label for="admissionSearch">Reference or applicant</label>
+                <input id="admissionSearch" name="q" class="form-control" value="{{ query_text }}">
+            </div>
+            <div class="filter-item">
+                <label for="admissionStatus">Status</label>
+                <select id="admissionStatus" name="status" class="form-control">
+                    <option value="">All statuses</option>
+                    {% for status in ['Incomplete', 'Pending Review', 'Corrections Requested', 'Approved', 'Rejected', 'Enrolled'] %}
+                    <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Reference</th><th>Applicant</th><th>Grade</th><th>Status</th><th>Files</th><th>Submitted</th><th></th></tr></thead>
+                <tbody>
+                {% for application in applications %}
+                    <tr>
+                        <td>{{ application.application_ref }}</td>
+                        <td>{{ application.applicant_name }}</td>
+                        <td>{{ application.applied_grade }}</td>
+                        <td>{{ application.status }}</td>
+                        <td>{{ application.document_count }} ({{ application.approved_documents }} approved)</td>
+                        <td>{{ application.submitted_at.strftime('%b %d, %Y') if application.submitted_at else '—' }}</td>
+                        <td><a class="btn btn-sm btn-outline" href="{{ url_for('admission.application_detail', application_id=application.id) }}">Review</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="7" class="text-muted">No applications match this filter.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

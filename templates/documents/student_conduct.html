@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Student Conduct & Commendations - {{ student.name }} - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-medal" style="color: #f59e0b; margin-right: 8px;"></i> Student Conduct &amp; Commendations</h1>
+        <p class="page-subtitle">Merits, pastoral awards, behavioral notices, and disciplinary records</p>
+    </div>
+    <div class="header-actions">
+        <a href="javascript:history.back()" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Student Header Card -->
+<div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #2563eb;">
+    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">
+                {{ student.name[0].upper() }}
+            </div>
+            <div>
+                <h2 style="font-size: 1.35rem; margin: 0; color: #0f172a;">{{ student.name }}</h2>
+                <div style="color: #64748b; font-size: 0.88rem; margin-top: 2px;">
+                    ID: <strong>{{ student.student_system_id }}</strong> | Roll: <strong>{{ student.roll_number or 'N/A' }}</strong> | Class: <strong>{{ student.grade_name }} - {{ student.section_name }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('documents.report_card', student_id=student.id) }}" class="btn btn-sm btn-outline" target="_blank">
+                <i class="fas fa-scroll"></i> Report Card
+            </a>
+            <a href="{{ url_for('documents.certificate', student_id=student.id) }}" class="btn btn-sm btn-outline" target="_blank">
+                <i class="fas fa-certificate"></i> Certificate
+            </a>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr {% if is_staff %}380px{% endif %}; gap: 1.5rem; align-items: flex-start;">
+    <!-- Conduct Logs Timeline -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-history" style="color: #2563eb;"></i> Conduct Timeline &amp; Records</h3>
+            <span class="badge badge-info">{{ logs | length }} entries</span>
+        </div>
+        <div class="card-body">
+            {% if logs %}
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for log in logs %}
+                <div style="border-left: 4px solid {% if log.log_type in ['Commendation', 'Achievement'] %}#10b981{% elif log.log_type == 'Discipline_Warning' %}#ef4444{% else %}#3b82f6{% endif %}; background: #f8fafc; border-radius: 0 8px 8px 0; padding: 1rem 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 0.4rem; flex-wrap: wrap;">
+                        <span class="badge" style="font-size: 0.75rem;
+                            {% if log.log_type in ['Commendation', 'Achievement'] %}background: #d1fae5; color: #065f46;
+                            {% elif log.log_type == 'Discipline_Warning' %}background: #fee2e2; color: #991b1b;
+                            {% else %}background: #dbeafe; color: #1e40af;{% endif %}">
+                            <i class="fas {% if log.log_type in ['Commendation', 'Achievement'] %}fa-award{% elif log.log_type == 'Discipline_Warning' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                            {{ log.log_type.replace('_', ' ') }}
+                        </span>
+                        <span style="font-size: 0.8rem; color: #64748b;">
+                            <i class="far fa-calendar"></i> {{ log.incident_date.strftime('%b %d, %Y') if log.incident_date else 'Recent' }}
+                        </span>
+                    </div>
+
+                    <h4 style="margin: 0 0 0.4rem 0; font-size: 1.05rem; color: #1e293b;">{{ log.title }}</h4>
+                    <p style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #475569; line-height: 1.5; white-space: pre-wrap;">{{ log.description }}</p>
+
+                    <div style="font-size: 0.78rem; color: #94a3b8;">
+                        Logged by: <strong>{{ log.recorded_by_name }}</strong> ({{ log.recorded_by_role }})
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 2.5rem 1rem; text-align: center;">
+                <i class="fas fa-medal" style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 0.75rem;"></i>
+                <h3>No Conduct Records Yet</h3>
+                <p style="color: #64748b; font-size: 0.9rem;">No commendations or disciplinary notices have been recorded for this student.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Form for Staff to Add Conduct Entry -->
+    {% if is_staff %}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-plus-circle" style="color: #2563eb;"></i> Record Entry</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('documents.add_student_conduct', student_id=student.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="conductType">Entry Type <span style="color: #ef4444;">*</span></label>
+                    <select name="log_type" id="conductType" class="form-control" required>
+                        <option value="Commendation">Merit / Commendation</option>
+                        <option value="Achievement">Sports / Academic Achievement</option>
+                        <option value="Discipline_Warning">Disciplinary Warning</option>
+                        <option value="Attendance_Notice">Attendance Regularity Notice</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="conductTitle">Title / Short Summary <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="conductTitle" name="title" class="form-control" placeholder="e.g. 1st Position in Science Fair / Disruption in Lab" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="conductDate">Date of Incident / Award</label>
+                    <input type="date" id="conductDate" name="incident_date" class="form-control">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="conductDesc">Detailed Observation <span style="color: #ef4444;">*</span></label>
+                    <textarea id="conductDesc" name="description" class="form-control" rows="4" placeholder="Describe the incident, merit remarks, or recommendations..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-save"></i> Save Conduct Entry
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

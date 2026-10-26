@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Account Created - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Account created</h1>
+        <p>Copy the account details and share them with the user.</p>
+    </div>
+    <a class="btn btn-outline" href="{{ url_for('admin.users') }}">Back to User Management</a>
+</div>
+
+<div class="card">
+    <div class="card-header"><h2>Account details to share</h2></div>
+    <div class="card-body">
+        <p class="password-reset-guidance">
+            This password is shown only on this page and is not stored as plain text. Share it privately and ask the user to change it after signing in.
+            {% if account.login_pending %}The Student account must be activated before the student can sign in.{% endif %}
+        </p>
+        <dl class="account-share-details">
+            <div><dt>Account ID</dt><dd>{{ account.user_id }}</dd></div>
+            <div><dt>Name</dt><dd>{{ account.name }}</dd></div>
+            <div><dt>Account type</dt><dd>{{ account.user_type }}</dd></div>
+            <div><dt>Username</dt><dd>{{ account.username }}</dd></div>
+            <div><dt>Temporary password</dt><dd><code>{{ account.password }}</code></dd></div>
+            <div><dt>Mobile number</dt><dd>{{ account.phone or 'Not provided' }}</dd></div>
+            {% if account.student_id %}
+            <div><dt>Student ID</dt><dd>{{ account.student_id }}</dd></div>
+            {% endif %}
+            {% if account.section %}
+            <div><dt>Section</dt><dd>{{ account.section }}</dd></div>
+            {% endif %}
+            {% if account.roll_number %}
+            <div><dt>Roll number</dt><dd>{{ account.roll_number }}</dd></div>
+            {% endif %}
+        </dl>
+        <label for="accountShareMessage">Copy-ready message</label>
+        <textarea id="accountShareMessage" class="form-control account-share-message" readonly>{{ account.name }} - SchoolSync account
+Account ID: {{ account.user_id }}
+Account type: {{ account.user_type }}
+Username: {{ account.username }}
+Temporary password: {{ account.password }}
+Mobile: {{ account.phone or 'Not provided' }}{% if account.student_id %}
+Student ID: {{ account.student_id }}{% endif %}{% if account.section %}
+Section: {{ account.section }}{% endif %}{% if account.roll_number %}
+Roll number: {{ account.roll_number }}{% endif %}{% if account.login_pending %}
+Account status: Pending activation. Please contact the school administrator before signing in.{% endif %}
+Please change your password after your first sign-in.</textarea>
+        <div class="action-buttons account-share-actions">
+            <button type="button" class="btn btn-primary" id="copyAccountDetails" onclick="copyAccountDetails()">
+                <i class="fas fa-copy"></i> Copy all account details
+            </button>
+            <span id="copyAccountStatus" role="status" aria-live="polite"></span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .account-share-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px 20px;
+        margin: 20px 0;
+    }
+    .account-share-details div { min-width: 0; }
+    .account-share-details dt { color: var(--text-muted); font-size: 0.85rem; }
+    .account-share-details dd { margin: 3px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+    .account-share-message { min-height: 190px; margin-top: 8px; }
+    .account-share-actions { align-items: center; margin-top: 14px; }
+    @media (max-width: 600px) {
+        .account-share-actions .btn { width: 100%; justify-content: center; }
+    }
+</style>
+
+<script>
+function copyAccountDetails() {
+    var message = document.getElementById('accountShareMessage');
+    var status = document.getElementById('copyAccountStatus');
+    function copied() {
+        status.textContent = 'Account details copied. Share them privately.';
+    }
+    function failed() {
+        message.focus();
+        message.select();
+        status.textContent = 'Copy was blocked. The message is selected; copy it manually.';
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(message.value).then(copied, failed);
+        return;
+    }
+    message.focus();
+    message.select();
+    if (document.execCommand('copy')) copied();
+    else failed();
+}
+</script>
+{% endblock %}

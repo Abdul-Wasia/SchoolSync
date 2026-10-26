@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Review Admission - GR Office{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Review admission</h1>
+        <p class="page-subtitle">{{ application.application_ref }} · {{ application.applicant_name }} · {{ application.status }}</p>
+    </div>
+    <a class="btn btn-outline" href="{{ url_for('admission.gr_admissions') }}">Back to admissions</a>
+</div>
+<div class="card">
+    <div class="card-header"><h2>Applicant details</h2></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <p><strong>Applicant:</strong> {{ application.applicant_name }}</p>
+            <p><strong>Date of birth:</strong> {{ application.dob }}</p>
+            <p><strong>Gender:</strong> {{ application.gender }}</p>
+            <p><strong>Contact:</strong> {{ application.contact_phone }}</p>
+            <p><strong>Email:</strong> {{ application.email or '—' }}</p>
+            <p><strong>Parent/guardian:</strong> {{ application.guardian_name }} ({{ application.guardian_phone }})</p>
+            <p><strong>Requested grade:</strong> {{ application.applied_grade }}</p>
+            <p><strong>Previous school:</strong> {{ application.previous_school }} ({{ application.previous_grade }})</p>
+            <p class="full-width"><strong>Address:</strong> {{ application.address }}</p>
+            <p class="full-width"><strong>Internal note:</strong> {{ application.internal_note or '—' }}</p>
+        </div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header"><h2>Document versions</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Category</th><th>Uploaded</th><th>Status</th><th>Remarks</th><th>File</th><th>Review</th></tr></thead>
+                <tbody>
+                {% for document in documents %}
+                    <tr>
+                        <td>{{ document.category }}{% if document.category in required_documents %} *{% endif %}</td>
+                        <td>{{ document.uploaded_at.strftime('%b %d, %Y %H:%M') if document.uploaded_at else '—' }}</td>
+                        <td>{{ document.status }}</td>
+                        <td>{{ document.remarks or '—' }}</td>
+                        <td>
+                            {% if document.file_available %}
+                            <a href="{{ url_for('admission.admission_document', document_id=document.id) }}">View</a>
+                            <a href="{{ url_for('admission.admission_document', document_id=document.id, download=1) }}">Download</a>
+                            {% else %}<span class="text-muted">Unavailable</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if application.status not in ['Rejected', 'Enrolled'] %}
+                            <form method="POST" action="{{ url_for('admission.review_admission_document', application_id=application.id, document_id=document.id) }}">
+                                <select name="decision" class="form-control" required>
+                                    <option value="">Choose</option><option value="approve">Approve</option>
+                                    <option value="reject">Reject</option><option value="replace">Request replacement</option>
+                                </select>
+                                <input name="remarks" class="form-control" maxlength="1000" placeholder="Reason (required to reject/request replacement)">
+                                <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                            </form>
+                            {% else %}Locked{% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6">No documents submitted.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% if application.status not in ['Rejected', 'Enrolled'] %}
+<div class="card">
+    <div class="card-header"><h2>Application decision</h2></div>
+    <div class="card-body">
+        {% if application.status == 'Approved' %}
+            {% if admin_notified %}
+            <p>Sent to IT Admin. An administrator will create and link the Student account to complete enrollment.</p>
+            {% else %}
+            <p>This application is approved but has not been sent to IT Admin for Student account creation.</p>
+            {% endif %}
+        {% endif %}
+        {% if application.status != 'Approved' or not admin_notified %}
+        <p>{% if required_approved %}All required document versions are approved. Send the application to IT Admin to approve it and request Student account creation.{% else %}Birth Certificate, Report Card, and Parent/Guardian CNIC must each have an approved latest version before sending to IT Admin.{% endif %}</p>
+        <form method="POST" action="{{ url_for('admission.review_application', application_id=application.id) }}">
+            <div class="form-group">
+                <label for="decisionNote">Decision note (required for correction request or rejection)</label>
+                <textarea id="decisionNote" name="note" class="form-control" rows="3" maxlength="2000"></textarea>
+            </div>
+            <div class="action-buttons">
+                <button name="action" value="request_corrections" class="btn btn-outline" type="submit">Request corrections</button>
+                {% if required_approved %}<button name="action" value="send_to_admin" class="btn btn-primary" type="submit">Send to Admin</button>{% endif %}
+                <button name="action" value="reject" class="btn btn-outline-danger" type="submit">Reject</button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

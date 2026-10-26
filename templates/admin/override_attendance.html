@@ -93,9 +93,9 @@
     </div>
     <div class="card-body no-padding">
         <form method="POST" action="{{ url_for('admin.override_attendance') }}">
-            <input type="hidden" name="section_id" value="{{ request.form.section_id }}">
-            <input type="hidden" name="date" value="{{ request.form.date }}">
-            <input type="hidden" name="subject_id" value="{{ request.form.subject_id }}">
+            <input type="hidden" name="section_id" value="{{ selected_section or request.form.section_id }}">
+            <input type="hidden" name="date" value="{{ selected_date or request.form.date }}">
+            <input type="hidden" name="subject_id" value="{{ selected_subject or request.form.subject_id }}">
             
             <div class="table-responsive">
                 <table class="table attendance-table">

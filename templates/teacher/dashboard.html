@@ -39,10 +39,41 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon purple"><i class="fas fa-clipboard-list"></i></div>
+        <div class="stat-icon green"><i class="fas fa-clipboard-check"></i></div>
         <div class="stat-info">
-            <div class="stat-number" data-target="{{ my_requests|length }}">{{ my_requests|length }}</div>
-            <div class="stat-label">Class Requests</div>
+            <div class="stat-number">{{ attendance_totals.percentage }}%</div>
+            <div class="stat-label">Attendance Rate</div>
+        </div>
+    </div>
+</div>
+
+<div class="stats-grid" style="margin-top: 1rem;">
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ attendance_totals.present }}">{{ attendance_totals.present }}</div>
+            <div class="stat-label">Total Present</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ attendance_totals.absent }}">{{ attendance_totals.absent }}</div>
+            <div class="stat-label">Total Absent</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ attendance_totals.late }}">{{ attendance_totals.late }}</div>
+            <div class="stat-label">Total Late</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fas fa-list"></i></div>
+        <div class="stat-info">
+            <div class="stat-number" data-target="{{ attendance_totals.total }}">{{ attendance_totals.total }}</div>
+            <div class="stat-label">Attendance Records</div>
         </div>
     </div>
 </div>
@@ -66,10 +97,11 @@
                         <div class="course-meta">
                             <span><i class="fas fa-layer-group"></i> {{ course.grade_name }} - {{ course.section_name }}</span>
                             <span><i class="fas fa-users"></i> {{ course.student_count }} students</span>
+                            <span><i class="fas fa-clipboard-check"></i> {{ course.attendance_pct }}% attendance</span>
                         </div>
                     </a>
                     {% if course.pending_assignments > 0 %}
-                    <a href="{{ url_for('teacher.submissions', assignment_id=course.next_assignment_id) }}" class="course-action-link" onclick="event.stopPropagation()">
+                    <a href="{{ url_for('teacher.submissions', assignment_id=course.next_assignment_id, section_id=course.section_id) }}" class="course-action-link" onclick="event.stopPropagation()">
                         <i class="fas fa-clipboard-list"></i> {{ course.pending_assignments }} pending submissions
                     </a>
                     {% endif %}
@@ -97,11 +129,11 @@
                 <div class="schedule-item">
                     <div class="schedule-time">
                         <span class="period">Period {{ slot.period }}</span>
-                        <span class="time">{{ slot.start_time.strftime('%H:%M') }} - {{ slot.end_time.strftime('%H:%M') }}</span>
+                        <span class="time">{{ slot.start_time|format_time }} - {{ slot.end_time|format_time }}</span>
                     </div>
                     <div class="schedule-info">
                         <h4>{{ slot.subject_name }}</h4>
-                        <span>{{ slot.section_name }} ({{ slot.room_type }})</span>
+                        <span>{{ slot.section_label }} ({{ slot.room_type }})</span>
                     </div>
                 </div>
                 {% endfor %}

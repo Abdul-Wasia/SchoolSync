@@ -15,6 +15,49 @@
     </div>
 </div>
 
+<div class="admin-user-filters">
+    <form method="GET" action="{{ url_for('admin.users') }}" class="admin-user-filter-form">
+        <div class="filter-item admin-user-search">
+            <label for="userSearch">Find a user</label>
+            <input type="search" id="userSearch" name="q" class="form-control"
+                   value="{{ user_filters.q }}" placeholder="Name, username, email, subject, roll number or student ID">
+        </div>
+        <div class="filter-item">
+            <label for="userRoleFilter">Role</label>
+            <select id="userRoleFilter" name="role" class="form-control">
+                <option value="" {% if not user_filters.role %}selected{% endif %}>All users</option>
+                <option value="Teacher" {% if user_filters.role == 'Teacher' %}selected{% endif %}>Teachers</option>
+                <option value="Student" {% if user_filters.role == 'Student' %}selected{% endif %}>Students</option>
+            </select>
+        </div>
+        <div class="filter-item">
+            <label for="teacherSubjectFilter">Teacher subject</label>
+            <select id="teacherSubjectFilter" name="subject" class="form-control">
+                <option value="">All subjects</option>
+                {% for item in teacher_subjects %}
+                <option value="{{ item.subject }}" {% if user_filters.subject == item.subject %}selected{% endif %}>{{ item.subject }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-item">
+            <label for="studentClassFilter">Student class</label>
+            <select id="studentClassFilter" name="section_id" class="form-control">
+                <option value="">All classes</option>
+                {% for sec in sections %}
+                <option value="{{ sec.id }}" {% if user_filters.section_id == sec.id %}selected{% endif %}>{{ sec.grade_name }} - {{ sec.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="admin-user-filter-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-outline">Clear</a>
+        </div>
+    </form>
+    <p class="admin-user-filter-summary" aria-live="polite">
+        Showing {{ users|length }} user{{ '' if users|length == 1 else 's' }}
+    </p>
+</div>
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
@@ -31,10 +74,24 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% if not users %}
+                    <tr>
+                        <td colspan="7" class="admin-user-no-results">No users match these filters.</td>
+                    </tr>
+                    {% endif %}
                     {% for user in users %}
                     <tr>
                         <td>{{ user.username }}</td>
-                        <td>{{ user.full_name or '-' }}</td>
+                        <td>
+                            {{ user.full_name or '-' }}
+                            {% if user.user_type == 'Student' and (user.student_system_id or user.roll_number) %}
+                            <small class="admin-user-identifiers">
+                                {% if user.student_system_id %}{{ user.student_system_id }}{% endif %}
+                                {% if user.student_system_id and user.roll_number %} · {% endif %}
+                                {% if user.roll_number %}Roll #{{ user.roll_number }}{% endif %}
+                            </small>
+                            {% endif %}
+                        </td>
                         <td>
                             {% set role_label = {'IT_Admin': 'IT Admin', 'GR_Office': 'GR Office', 'FA': 'Faculty Advisor'}.get(user.user_type, user.user_type) %}
                             <div class="user-role-cell">
@@ -99,7 +156,10 @@
                     </div>
                     <div class="form-group">
                         <label>Password *</label>
-                        <input type="password" name="password" class="form-control" required minlength="6" placeholder="Min 6 characters">
+                        <div class="password-control-row">
+                            <input type="password" name="password" id="createUserPassword" class="form-control" required minlength="6" placeholder="Min 6 characters" autocomplete="new-password">
+                            <button type="button" class="btn btn-outline password-action" onclick="togglePasswordVisibility('createUserPassword', this)" aria-label="Show password" title="Show password"><i class="fas fa-eye"></i></button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Email</label>
@@ -120,6 +180,20 @@
                             <option value="Teacher">Teacher</option>
                             <option value="Student">Student</option>
                         </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="admissionApplication">Approved admission (optional)</label>
+                        <select name="admission_application_id" id="admissionApplication" class="form-control" onchange="selectAdmissionApplicant()">
+                            <option value="">Create account without an admission application</option>
+                            {% for applicant in approved_admissions %}
+                            <option value="{{ applicant.id }}" data-name="{{ applicant.applicant_name }}"
+                                    data-phone="{{ applicant.contact_phone }}" data-email="{{ applicant.email or '' }}"
+                                    data-grade="{{ applicant.applied_grade_id }}">
+                                {{ applicant.application_ref }} — {{ applicant.applicant_name }} ({{ applicant.grade_name }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Linking an approved application creates the Student record and marks it enrolled in the same transaction.</small>
                     </div>
                 </div>
                 
@@ -151,21 +225,23 @@
                     </h4>
                     <div class="modal-form-grid">
                         <div class="form-group">
-                            <label>Father's Name</label>
-                            <input type="text" name="father_name" class="form-control" placeholder="Father's name">
-                        </div>
-                        <div class="form-group">
                             <label>Section</label>
-                            <select name="section_id" class="form-control">
+                            <select name="section_id" id="studentSection" class="form-control">
                                 <option value="">Select Section</option>
                                 {% for sec in sections %}
-                                <option value="{{ sec.id }}">{{ sec.grade_name }} - {{ sec.name }}</option>
+                                <option value="{{ sec.id }}" data-grade="{{ sec.grade_id }}">{{ sec.grade_name }} - {{ sec.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Roll Number</label>
-                            <input type="text" name="roll_number" class="form-control" placeholder="Roll number">
+                            <input type="text" name="roll_number" id="studentRollNumber" class="form-control" placeholder="Roll number">
+                        </div>
+                    </div>
+                    <div id="studentExtraFields" class="modal-form-grid">
+                        <div class="form-group">
+                            <label>Father's Name</label>
+                            <input type="text" name="father_name" class="form-control" placeholder="Father's name">
                         </div>
                         <div class="form-group">
                             <label>Date of Birth</label>
@@ -257,6 +333,44 @@ function toggleRoleFields() {
     document.querySelectorAll('.role-fields').forEach(function(el) { el.style.display = 'none'; });
     if (type === 'Teacher') document.getElementById('teacherFields').style.display = 'block';
     if (type === 'Student') document.getElementById('studentFields').style.display = 'block';
+    var admissionSelector = document.getElementById('admissionApplication');
+    if (type !== 'Student' && admissionSelector.value) {
+        admissionSelector.value = '';
+        selectAdmissionApplicant();
+    }
+}
+
+function selectAdmissionApplicant() {
+    var selector = document.getElementById('admissionApplication');
+    var selected = selector.options[selector.selectedIndex];
+    var linkedAdmission = Boolean(selector.value);
+    var extras = document.getElementById('studentExtraFields');
+    var section = document.getElementById('studentSection');
+    var rollNumber = document.getElementById('studentRollNumber');
+    extras.style.display = linkedAdmission ? 'none' : 'grid';
+    section.required = linkedAdmission;
+    rollNumber.required = linkedAdmission;
+    Array.from(section.options).forEach(function(option) {
+        if (!option.value) return;
+        option.hidden = linkedAdmission && option.dataset.grade !== selected.dataset.grade;
+    });
+
+    if (!linkedAdmission) {
+        document.querySelector('#createUserForm [name="name"]').value = '';
+        document.querySelector('#createUserForm [name="phone"]').value = '';
+        document.querySelector('#createUserForm [name="email"]').value = '';
+        section.value = '';
+        rollNumber.value = '';
+        return;
+    }
+
+    document.getElementById('userType').value = 'Student';
+    toggleRoleFields();
+    document.querySelector('#createUserForm [name="name"]').value = selected.dataset.name || '';
+    document.querySelector('#createUserForm [name="phone"]').value = selected.dataset.phone || '';
+    document.querySelector('#createUserForm [name="email"]').value = selected.dataset.email || '';
+
+    section.value = '';
 }
 
 function showResetPasswordModal(userId, username) {

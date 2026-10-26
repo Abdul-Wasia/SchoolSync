@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from datetime import datetime, date
-from database.connection import query, transaction
+from database.connection import query, transaction, normalize_month_key
 from routes.auth_routes import login_required, log_activity
+from routes.leave_workflow import approved_leave_attendance_queries
 
 
 def get_fee_months():
@@ -190,15 +191,68 @@ def timetable():
         action = request.form.get('action')
         
         if action == 'add':
-            section_id = request.form.get('section_id')
-            subject_id = request.form.get('subject_id')
-            teacher_id = request.form.get('teacher_id')
+            section_id = request.form.get('section_id', type=int)
+            subject_id = request.form.get('subject_id', type=int)
+            teacher_id = request.form.get('teacher_id', type=int)
             day = request.form.get('day')
-            period = request.form.get('period')
+            period = request.form.get('period', type=int)
             start_time = request.form.get('start_time')
             end_time = request.form.get('end_time')
             room_type = request.form.get('room_type', 'Classroom')
-            
+            valid_days = {'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'}
+
+            if not all([section_id, subject_id, teacher_id, day, period, start_time, end_time]) \
+                    or day not in valid_days or not 1 <= period <= 8:
+                flash('Choose a section, subject, teacher, day, period and times.', 'danger')
+                return redirect(url_for('fa.timetable', section_id=section_id))
+
+            matching_subject = query(
+                """SELECT sub.id FROM subjects sub
+                   JOIN sections sec ON sec.grade_id = sub.grade_id
+                   WHERE sub.id = %s AND sec.id = %s""",
+                (subject_id, section_id),
+                fetch_one=True
+            )
+            if not matching_subject:
+                flash('That subject does not belong to the selected section grade.', 'danger')
+                return redirect(url_for('fa.timetable', section_id=section_id))
+
+            assigned = query(
+                """SELECT id FROM subject_teachers
+                   WHERE teacher_id = %s AND subject_id = %s AND section_id = %s""",
+                (teacher_id, subject_id, section_id),
+                fetch_one=True
+            )
+            if not assigned:
+                flash('Assign this teacher to the subject and section before scheduling it.', 'danger')
+                return redirect(url_for('fa.timetable', section_id=section_id))
+
+            teacher_clash = query(
+                """SELECT tt.id, CONCAT(g.name, ' - ', sec.name) as section_label
+                   FROM timetable tt
+                   JOIN sections sec ON tt.section_id = sec.id
+                   JOIN grades g ON sec.grade_id = g.id
+                   WHERE tt.teacher_id = %s AND tt.day = %s AND tt.period = %s""",
+                (teacher_id, day, period),
+                fetch_one=True
+            )
+            if teacher_clash:
+                flash(
+                    f'This teacher already teaches {teacher_clash["section_label"]} in that period.',
+                    'danger'
+                )
+                return redirect(url_for('fa.timetable', section_id=section_id))
+
+            section_clash = query(
+                """SELECT id FROM timetable
+                   WHERE section_id = %s AND day = %s AND period = %s""",
+                (section_id, day, period),
+                fetch_one=True
+            )
+            if section_clash:
+                flash('That section already has a subject in this period.', 'danger')
+                return redirect(url_for('fa.timetable', section_id=section_id))
+
             query(
                 """INSERT INTO timetable (section_id, subject_id, teacher_id, day, period, start_time, end_time, room_type)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -213,9 +267,20 @@ def timetable():
             flash('Timetable slot deleted.', 'success')
             log_activity(session['user_id'], 'TIMETABLE_DELETE', f'Deleted timetable slot {slot_id}')
         
-        return redirect(url_for('fa.timetable'))
+        return redirect(url_for('fa.timetable', section_id=request.form.get('section_id', type=int)))
     
     # GET
+    sections = query(
+        """SELECT s.*, g.name as grade_name 
+           FROM sections s 
+           JOIN grades g ON s.grade_id = g.id 
+           ORDER BY g.id, s.name""",
+        fetch=True
+    )
+    selected_section_id = request.args.get('section_id', type=int)
+    if not selected_section_id and sections:
+        selected_section_id = sections[0]['id']
+
     timetable_data = query(
         """SELECT tt.*, s.name as section_name, g.name as grade_name, sub.subject_name, t.name as teacher_name
            FROM timetable tt
@@ -223,25 +288,32 @@ def timetable():
            JOIN grades g ON s.grade_id = g.id
            JOIN subjects sub ON tt.subject_id = sub.id
            JOIN teachers t ON tt.teacher_id = t.id
-           ORDER BY g.name, s.name, 
-           FIELD(tt.day, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'),
-           tt.period""",
+           WHERE tt.section_id = %s
+           ORDER BY FIELD(tt.day, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'),
+                    tt.period""",
+        (selected_section_id,),
         fetch=True
-    )
+    ) or []
     
-    sections = query(
-        """SELECT s.*, g.name as grade_name 
-           FROM sections s 
-           JOIN grades g ON s.grade_id = g.id 
-           ORDER BY g.name, s.name""",
+    subjects = query(
+        """SELECT s.*, g.name as grade_name FROM subjects s
+           JOIN grades g ON s.grade_id = g.id
+           ORDER BY g.id, s.subject_name""",
         fetch=True
     )
-    subjects = query("SELECT s.*, g.name as grade_name FROM subjects s JOIN grades g ON s.grade_id = g.id ORDER BY g.name, s.subject_name", fetch=True)
     teachers = query("SELECT t.*, u.username FROM teachers t JOIN users u ON t.user_id = u.id WHERE u.is_active = 1 ORDER BY t.name", fetch=True)
     
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
     
-    return render_template('fa/timetable.html', timetable=timetable_data, sections=sections, subjects=subjects, teachers=teachers, days=days)
+    return render_template(
+        'fa/timetable.html',
+        timetable=timetable_data,
+        sections=sections,
+        subjects=subjects,
+        teachers=teachers,
+        days=days,
+        selected_section_id=selected_section_id,
+    )
 
 @fa_bp.route('/class-requests', methods=['GET', 'POST'])
 @login_required(['FA'])
@@ -383,7 +455,8 @@ def reports():
 @fa_bp.route('/fees', methods=['GET', 'POST'])
 @login_required(['FA'])
 def fees():
-    selected_month = request.args.get('month') or date.today().strftime('%b %Y')
+    raw_month = request.args.get('month') or date.today().strftime('%b %Y')
+    month_key = normalize_month_key(raw_month)
     grade_id = request.args.get('grade_id', type=int)
     section_id = request.args.get('section_id', type=int)
 
@@ -393,29 +466,31 @@ def fees():
     fee_structure = query(
         """SELECT fs.*, g.name as grade_name FROM fee_structure fs
            JOIN grades g ON fs.grade_id = g.id
-           ORDER BY g.name, fs.month_year""",
+           ORDER BY g.name""",
         fetch=True
     )
 
     if request.method == 'POST' and request.form.get('action') == 'mark-paid':
         student_id = request.form.get('student_id', type=int)
-        month_year = request.form.get('month_year')
-        amount = request.form.get('amount', type=float) or 0
-        if student_id and month_year:
+        month_year_input = request.form.get('month_year')
+        if student_id and month_year_input:
+            month_key_save = normalize_month_key(month_year_input)
+            fa_record = query("SELECT id FROM fa WHERE user_id = %s", (session.get('user_id'),), fetch_one=True)
+            fa_id = fa_record['id'] if fa_record else None
             query(
-                """INSERT INTO student_fees (student_id, month_year, amount, status, marked_at)
-                   VALUES (%s, %s, %s, 'Paid', NOW())
-                   ON DUPLICATE KEY UPDATE amount = VALUES(amount), status = 'Paid', marked_at = NOW()""",
-                (student_id, month_year, amount)
+                """INSERT INTO student_fees (student_id, month_year, status, marked_by_fa_id, marked_at)
+                   VALUES (%s, %s, 'Paid', %s, NOW())
+                   ON DUPLICATE KEY UPDATE status = 'Paid', marked_by_fa_id = VALUES(marked_by_fa_id), marked_at = NOW()""",
+                (student_id, month_key_save, fa_id)
             )
             student = query("SELECT name, user_id FROM students WHERE id = %s", (student_id,), fetch_one=True)
-            if student:
+            if student and student.get('user_id'):
                 query(
                     "INSERT INTO notifications (user_id, message, type, link) VALUES (%s, %s, %s, %s)",
-                    (student['user_id'], f'Your fee for {month_year} is marked as paid', 'success', url_for('student.fees'))
+                    (student['user_id'], f'Your fee for {month_year_input} is marked as paid', 'success', url_for('student.fees'))
                 )
             flash('Fee marked as paid.', 'success')
-            return redirect(url_for('fa.fees', month=month_year, grade_id=grade_id, section_id=section_id))
+            return redirect(url_for('fa.fees', month=raw_month, grade_id=grade_id, section_id=section_id))
 
     month_rows = query(
         """SELECT sf.*, s.name, s.roll_number, sec.name as section_name, g.name as grade_name
@@ -423,22 +498,23 @@ def fees():
            JOIN students s ON sf.student_id = s.id
            LEFT JOIN sections sec ON s.section_id = sec.id
            LEFT JOIN grades g ON sec.grade_id = g.id
-           WHERE sf.month_year = %s""",
-        (selected_month,),
+           WHERE sf.month_year IN (%s, %s)""",
+        (month_key, raw_month),
         fetch=True
-    ) if selected_month else []
+    ) if raw_month else []
 
     students = query(
         """SELECT s.*, sec.name as section_name, g.name as grade_name,
-              COALESCE(sf.amount, 0) as fee_amount,
-              COALESCE(sf.status, 'Pending') as fee_status,
-              sf.month_year
+              COALESCE(fs.amount, 0) as fee_amount,
+              COALESCE(sf.status, 'Unpaid') as fee_status,
+              sf.month_year, sf.marked_at
            FROM students s
            LEFT JOIN sections sec ON s.section_id = sec.id
            LEFT JOIN grades g ON sec.grade_id = g.id
-           LEFT JOIN student_fees sf ON sf.student_id = s.id AND sf.month_year = %s
+           LEFT JOIN fee_structure fs ON fs.grade_id = g.id
+           LEFT JOIN student_fees sf ON sf.student_id = s.id AND sf.month_year IN (%s, %s)
            WHERE s.status = 'Active'""",
-        (selected_month,),
+        (month_key, raw_month),
         fetch=True
     )
 
@@ -453,7 +529,7 @@ def fees():
     pending_count = len(students) - paid_count
 
     return render_template('fa/fees.html', grades=grades, sections=sections, fee_structure=fee_structure,
-                         students=students, selected_month=selected_month, grade_id=grade_id,
+                         students=students, selected_month=raw_month, grade_id=grade_id,
                          section_id=section_id, total_collected=total_collected,
                          paid_count=paid_count, pending_count=pending_count)
 
@@ -462,44 +538,45 @@ def fees():
 @login_required(['FA'])
 def mark_fee_paid():
     student_id = request.form.get('student_id', type=int)
-    month_year = request.form.get('month_year')
-    amount = request.form.get('amount', type=float) or 0
-    if not student_id or not month_year:
+    month_year_input = request.form.get('month_year')
+    if not student_id or not month_year_input:
         flash('Student and month are required.', 'danger')
         return redirect(url_for('fa.fees'))
+    month_key_save = normalize_month_key(month_year_input)
+    fa_record = query("SELECT id FROM fa WHERE user_id = %s", (session.get('user_id'),), fetch_one=True)
+    fa_id = fa_record['id'] if fa_record else None
     query(
-        """INSERT INTO student_fees (student_id, month_year, amount, status, marked_at)
-           VALUES (%s, %s, %s, 'Paid', NOW())
-           ON DUPLICATE KEY UPDATE amount = VALUES(amount), status = 'Paid', marked_at = NOW()""",
-        (student_id, month_year, amount)
+        """INSERT INTO student_fees (student_id, month_year, status, marked_by_fa_id, marked_at)
+           VALUES (%s, %s, 'Paid', %s, NOW())
+           ON DUPLICATE KEY UPDATE status = 'Paid', marked_by_fa_id = VALUES(marked_by_fa_id), marked_at = NOW()""",
+        (student_id, month_key_save, fa_id)
     )
     student = query("SELECT name, user_id FROM students WHERE id = %s", (student_id,), fetch_one=True)
-    if student:
+    if student and student.get('user_id'):
         query(
             "INSERT INTO notifications (user_id, message, type, link) VALUES (%s, %s, %s, %s)",
-            (student['user_id'], f'Your fee for {month_year} is marked as paid', 'success', url_for('student.fees'))
+            (student['user_id'], f'Your fee for {month_year_input} is marked as paid', 'success', url_for('student.fees'))
         )
     flash('Fee status updated.', 'success')
-    return redirect(url_for('fa.fees', month=month_year))
+    return redirect(url_for('fa.fees', month=month_year_input))
 
 
 @fa_bp.route('/fees/set-structure', methods=['POST'])
 @login_required(['FA'])
 def set_fee_structure():
     grade_id = request.form.get('grade_id', type=int)
-    month_year = request.form.get('month_year')
     amount = request.form.get('amount', type=float) or 0
-    if not grade_id or not month_year:
-        flash('Grade and month are required.', 'danger')
+    if not grade_id:
+        flash('Grade is required.', 'danger')
         return redirect(url_for('fa.fees'))
     query(
-        """INSERT INTO fee_structure (grade_id, month_year, amount)
+        """INSERT INTO fee_structure (grade_id, amount, created_by)
            VALUES (%s, %s, %s)
            ON DUPLICATE KEY UPDATE amount = VALUES(amount)""",
-        (grade_id, month_year, amount)
+        (grade_id, amount, session.get('user_id'))
     )
     flash('Fee structure updated.', 'success')
-    return redirect(url_for('fa.fees', month=month_year))
+    return redirect(url_for('fa.fees'))
 
 
 @fa_bp.route('/exam-schedule', methods=['GET', 'POST'])
@@ -566,21 +643,51 @@ def respond_leave_request():
     leave_id = request.form.get('leave_id', type=int)
     action = request.form.get('action')
     note = request.form.get('response_note', '')
-    if not leave_id or not action:
+    if not leave_id or action not in {'approve', 'reject'}:
         flash('Leave request missing.', 'danger')
         return redirect(url_for('fa.leave_requests'))
-    status = 'Approved' if action == 'approve' else 'Rejected'
-    query(
-        "UPDATE leave_applications SET status = %s, reviewed_by = %s, reviewed_at = NOW(), response_note = %s WHERE id = %s",
-        (status, session['user_id'], note, leave_id)
+
+    leave = query(
+        """SELECT la.*, s.user_id, s.section_id
+           FROM leave_applications la
+           JOIN students s ON s.id = la.student_id
+           WHERE la.id = %s AND la.status = 'Pending'""",
+        (leave_id,),
+        fetch_one=True
     )
-    leave = query("SELECT * FROM leave_applications WHERE id = %s", (leave_id,), fetch_one=True)
-    if leave:
-        student = query("SELECT user_id, name FROM students WHERE id = %s", (leave['student_id'],), fetch_one=True)
-        if student:
-            query(
-                "INSERT INTO notifications (user_id, message, type, link) VALUES (%s, %s, %s, %s)",
-                (student['user_id'], f'Your leave application has been {status.lower()}.', 'info', url_for('student.leave'))
-            )
-    flash('Leave request updated.', 'success')
+    if not leave:
+        flash('This leave request is no longer pending.', 'warning')
+        return redirect(url_for('fa.leave_requests'))
+
+    status = 'Approved' if action == 'approve' else 'Rejected'
+    writes = [(
+        """UPDATE leave_applications
+           SET status = %s, reviewed_by = %s, reviewed_at = NOW(), response_note = %s
+           WHERE id = %s AND status = 'Pending'""",
+        (status, session['user_id'], note, leave_id)
+    )]
+    attendance_writes = []
+    if status == 'Approved':
+        attendance_writes = approved_leave_attendance_queries(
+            leave['student_id'], leave['section_id'], leave['from_date'], leave['to_date']
+        )
+        writes.extend(attendance_writes)
+
+    if not transaction(writes):
+        flash('Leave request could not be updated. No attendance changes were saved.', 'danger')
+        return redirect(url_for('fa.leave_requests'))
+
+    query(
+        "INSERT INTO notifications (user_id, message, type, link) VALUES (%s, %s, %s, %s)",
+        (
+            leave['user_id'],
+            f'Your leave application has been {status.lower()}.',
+            'success' if status == 'Approved' else 'warning',
+            url_for('student.leave')
+        )
+    )
+    if status == 'Approved' and not attendance_writes:
+        flash('Leave approved, but no subject assignments were found to update attendance.', 'warning')
+    else:
+        flash('Leave request updated.', 'success')
     return redirect(url_for('fa.leave_requests'))

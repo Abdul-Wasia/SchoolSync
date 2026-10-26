@@ -94,12 +94,14 @@
         .demo-login-grid button {
             border: 1px solid #93C5FD;
             border-radius: 8px;
+            min-height: 34px;
             padding: 7px 4px;
             background: white;
             color: #1D4ED8;
             cursor: pointer;
             font: inherit;
             font-weight: 600;
+            line-height: 1.2;
         }
         .demo-login-grid button:hover { background: #DBEAFE; }
 
@@ -245,6 +247,9 @@
                 <button type="button" onclick="useDemo('admin', 'admin123')">Admin</button>
                 <button type="button" onclick="useDemo('teacher1', 'teach123')">Teacher</button>
                 <button type="button" onclick="useDemo('student1', 'stud123')">Student</button>
+                <button type="button" onclick="useDemo('gr_office', 'gr123')">GR Office</button>
+                <button type="button" onclick="useDemo('principal', 'prin123')">Principal</button>
+                <button type="button" onclick="useDemo('fa_user', 'fa123')">Faculty Advisor</button>
             </div>
         </div>
 
@@ -262,6 +267,7 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('auth.login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <div class="input-wrapper">
@@ -285,6 +291,7 @@
         </form>
 
         <a href="{{ url_for('auth.forgot_password') }}" class="forgot-link">Forgot Password?</a>
+        <a href="{{ url_for('admission.public_form') }}" class="forgot-link">Apply for student admission</a>
 
         <div class="login-footer">&copy; 2025 SchoolSync</div>
     </div>

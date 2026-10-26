@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Notice Board & Circulars - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-bullhorn" style="color: #2563eb; margin-right: 8px;"></i> Notice Board & Circulars</h1>
+        <p class="page-subtitle">Official school circulars, academic notices, and urgent administrative announcements</p>
+    </div>
+    <div class="header-actions">
+        {% if is_staff %}
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('createNoticeModal').style.display='flex'">
+            <i class="fas fa-plus"></i> Post Announcement
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+{% if urgent_count > 0 %}
+<div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border-left: 4px solid #ef4444; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: #fee2e2; color: #ef4444; font-size: 1.1rem;">
+            <i class="fas fa-exclamation-triangle"></i>
+        </span>
+        <div>
+            <strong style="color: #991b1b; font-size: 1rem;">High Priority Alert</strong>
+            <p style="margin: 0; color: #b91c1c; font-size: 0.88rem;">There are {{ urgent_count }} urgent notice(s) currently active requiring immediate attention.</p>
+        </div>
+    </div>
+    <span class="badge badge-danger" style="animation: pulse 2s infinite;">Active Urgent</span>
+</div>
+{% endif %}
+
+<!-- Filters Card -->
+<div class="card">
+    <div class="card-body">
+        <form method="GET" class="form-grid" style="align-items: end;">
+            <div class="form-group">
+                <label for="noticeCategory">Category</label>
+                <select name="category" id="noticeCategory" class="form-control">
+                    <option value="All">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="noticePriority">Priority</label>
+                <select name="priority" id="noticePriority" class="form-control">
+                    <option value="All">All Priorities</option>
+                    {% for prio in priorities %}
+                    <option value="{{ prio }}" {% if selected_priority == prio %}selected{% endif %}>{{ prio }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="noticeSearch">Search Keyword</label>
+                <input type="search" id="noticeSearch" name="search" class="form-control"
+                       value="{{ search }}" placeholder="Search title or content...">
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+                {% if selected_category or selected_priority or search %}
+                <a href="{{ url_for('notices.index') }}" class="btn btn-outline">Reset</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Notices List -->
+<div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+    {% if notices %}
+        {% for notice in notices %}
+        <div class="card" style="border-left: 5px solid {% if notice.priority == 'Urgent' %}#ef4444{% elif notice.priority == 'High' %}#f59e0b{% else %}#3b82f6{% endif %}; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="card-body" style="padding: 1.25rem 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 280px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                            <span class="badge {% if notice.priority == 'Urgent' %}badge-danger{% elif notice.priority == 'High' %}badge-warning{% else %}badge-info{% endif %}">
+                                {{ notice.priority }}
+                            </span>
+                            <span class="badge badge-primary">{{ notice.category or 'General' }}</span>
+                            <span class="badge" style="background: #f1f5f9; color: #475569;">Target: {{ notice.target_role }}</span>
+                            {% if notice.grade_name %}
+                            <span class="badge" style="background: #e0e7ff; color: #3730a3;">{{ notice.grade_name }}{% if notice.section_name %} - {{ notice.section_name }}{% endif %}</span>
+                            {% endif %}
+                            {% if is_staff %}
+                                {% if notice.is_active %}
+                                <span class="badge badge-success">Published</span>
+                                {% else %}
+                                <span class="badge badge-danger">Archived</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <h3 style="font-size: 1.25rem; color: #1e293b; margin: 0 0 0.5rem 0; font-weight: 700;">
+                            {{ notice.title }}
+                        </h3>
+                        <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin: 0 0 0.75rem 0; white-space: pre-wrap;">{{ notice.content }}</p>
+                        <div style="font-size: 0.82rem; color: #64748b; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                            <span><i class="far fa-calendar-alt"></i> {{ notice.created_at.strftime('%b %d, %Y at %I:%M %p') if notice.created_at else 'Recent' }}</span>
+                            <span><i class="fas fa-user-edit"></i> Issued by: {{ notice.posted_by_name or 'Administration' }} ({{ notice.posted_by_role }})</span>
+                        </div>
+                    </div>
+
+                    {% if is_staff %}
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <form method="POST" action="{{ url_for('notices.toggle', notice_id=notice.id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm {% if notice.is_active %}btn-outline{% else %}btn-success{% endif %}" title="Toggle Active">
+                                <i class="fas {% if notice.is_active %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
+                                {{ 'Archive' if notice.is_active else 'Publish' }}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('notices.delete', notice_id=notice.id) }}" style="display: inline;" onsubmit="return confirm('Delete this announcement permanently?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state" style="background: white; border-radius: 12px; padding: 3rem 1.5rem; text-align: center;">
+            <i class="fas fa-bullhorn" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+            <h3>No Announcements Found</h3>
+            <p style="color: #64748b;">There are no circulars matching your selected criteria at this time.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Post Announcement (Staff Only) -->
+{% if is_staff %}
+<div id="createNoticeModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 1rem;">
+    <div class="card" style="max-width: 650px; width: 100%; border-radius: 14px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3><i class="fas fa-bullhorn"></i> Broadcast New Announcement</h3>
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('createNoticeModal').style.display='none'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('notices.create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="noticeTitle">Announcement Title <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="noticeTitle" name="title" class="form-control" placeholder="e.g. Mid-Term Examination Schedule Released" required>
+                </div>
+
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="noticeCategoryInput">Category</label>
+                        <select name="category" id="noticeCategoryInput" class="form-control">
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="noticePriorityInput">Priority Level</label>
+                        <select name="priority" id="noticePriorityInput" class="form-control">
+                            <option value="Normal">Normal</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent (Red Banner)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="targetRoleInput">Target Role Audience</label>
+                        <select name="target_role" id="targetRoleInput" class="form-control">
+                            {% for role in target_roles %}
+                            <option value="{{ role }}">{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="targetGradeInput">Specific Grade (Optional)</label>
+                        <select name="grade_id" id="targetGradeInput" class="form-control">
+                            <option value="">All Grades</option>
+                            {% for g in grades %}
+                            <option value="{{ g.id }}">{{ g.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="noticeContent">Announcement Body / Content <span style="color: #ef4444;">*</span></label>
+                    <textarea id="noticeContent" name="content" class="form-control" rows="5" placeholder="Write the complete announcement details here..." required></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('createNoticeModal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Publish Now</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

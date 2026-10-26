@@ -58,7 +58,7 @@
             {% if courses %}
             <div class="course-grid">
                 {% for course in courses %}
-                <div class="course-card" style="background: {{ subjectColor(course.subject_name) }}">
+                <a href="{{ url_for('student.course_detail', subject_id=course.subject_id) }}" class="course-card" aria-label="Open {{ course.subject_name }} course" style="background: {{ subjectColor(course.subject_name) }}">
                     <div class="course-header">
                         <h4>{{ course.subject_name }}</h4>
                         <span class="badge badge-light">{{ course.type }}</span>
@@ -66,7 +66,7 @@
                     <div class="course-meta">
                         <span><i class="fas fa-chalkboard-teacher"></i> {{ course.teacher_name }}</span>
                     </div>
-                </div>
+                </a>
                 {% endfor %}
             </div>
             {% else %}

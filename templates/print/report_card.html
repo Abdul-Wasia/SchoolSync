@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Card - {{ student.name }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: #eef2f7;
+            margin: 0;
+            padding: 24px;
+            color: #1f2937;
+        }
+        .toolbar {
+            max-width: 820px;
+            margin: 0 auto 16px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .toolbar .spacer { flex: 1; }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-outline { background: #fff; color: #334155; border: 1px solid #cbd5e1; }
+        .report-card {
+            max-width: 820px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 36px 40px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        }
+        .rc-head {
+            text-align: center;
+            border-bottom: 3px double #1d4ed8;
+            padding-bottom: 14px;
+        }
+        .rc-head .school-name { font-size: 28px; font-weight: 800; color: #1d4ed8; letter-spacing: 1px; }
+        .rc-head .school-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .rc-head h2 { margin: 12px 0 0; font-size: 18px; letter-spacing: 2px; color: #0f172a; }
+        .rc-head .subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+        table { width: 100%; border-collapse: collapse; }
+        .info-table { margin-top: 20px; }
+        .info-table td { padding: 7px 10px; font-size: 14px; }
+        .info-table .label { color: #64748b; width: 130px; }
+        .info-table .value { font-weight: 600; color: #0f172a; }
+        .marks-table { margin-top: 24px; }
+        .marks-table th, .marks-table td {
+            border: 1px solid #cbd5e1;
+            padding: 10px 12px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .marks-table th { background: #1e293b; color: #fff; font-weight: 600; }
+        .marks-table td.subject { text-align: left; font-weight: 600; }
+        .marks-table tr:nth-child(even) td { background: #f8fafc; }
+        .grade-pill {
+            display: inline-block;
+            min-width: 34px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 13px;
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .pass { color: #15803d; font-weight: 700; }
+        .fail { color: #b91c1c; font-weight: 700; }
+        .summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 24px;
+        }
+        .summary-card {
+            flex: 1 1 150px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+            background: #f8fafc;
+        }
+        .summary-card .value { font-size: 22px; font-weight: 800; color: #1d4ed8; }
+        .summary-card .label { font-size: 12px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .result-banner {
+            margin-top: 22px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            padding: 12px;
+            border-radius: 10px;
+        }
+        .result-pass { background: #dcfce7; color: #15803d; }
+        .result-fail { background: #fee2e2; color: #b91c1c; }
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 56px;
+            gap: 40px;
+        }
+        .sign-box {
+            flex: 1;
+            text-align: center;
+            border-top: 1.5px solid #94a3b8;
+            padding-top: 8px;
+            font-size: 13px;
+            color: #475569;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 26px;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .empty { text-align: center; color: #64748b; padding: 40px 0; font-size: 15px; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .no-print { display: none !important; }
+            .report-card {
+                max-width: none;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+                padding: 10px 16px;
+            }
+            .marks-table tr:nth-child(even) td { background: #fff; }
+            .summary-card { background: #fff; }
+        }
+        @page { size: A4; margin: 14mm; }
+    </style>
+</head>
+<body>
+    <div class="toolbar no-print">
+        <a href="javascript:history.back()" class="btn btn-outline">&larr; Back</a>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <div class="report-card">
+        <div class="rc-head">
+            <div class="school-name">SchoolSync</div>
+            <div class="school-sub">Excellence in Education</div>
+            <h2>STUDENT ACADEMIC REPORT CARD</h2>
+            {% if exam_type %}<div class="subtitle">Assessment: {{ exam_type }}</div>{% endif %}
+        </div>
+
+        <table class="info-table">
+            <tr>
+                <td class="label">Student Name</td>
+                <td class="value">{{ student.name }}</td>
+                <td class="label">Father / Guardian</td>
+                <td class="value">{{ student.father_name or 'N/A' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Class</td>
+                <td class="value">{{ student.grade_name or 'N/A' }}{% if student.section_name %} - {{ student.section_name }}{% endif %}</td>
+                <td class="label">Roll No</td>
+                <td class="value">{{ student.roll_number or 'N/A' }}</td>
+            </tr>
+            <tr>
+                <td class="label">Student ID</td>
+                <td class="value">{{ student.student_system_id }}</td>
+                <td class="label">Issue Date</td>
+                <td class="value">{{ issued_on.strftime('%b %d, %Y') }}</td>
+            </tr>
+        </table>
+
+        {% if subject_rows %}
+        <table class="marks-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Subject</th>
+                    <th>Marks Obtained</th>
+                    <th>Total Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in subject_rows %}
+                <tr>
+                    <td class="subject">{{ row.subject_name }}</td>
+                    <td>{{ '%.2f'|format(row.obtained) }}</td>
+                    <td>{{ '%.2f'|format(row.total) }}</td>
+                    <td>{{ row.percentage }}%</td>
+                    <td><span class="grade-pill">{{ row.grade }}</span></td>
+                    <td class="{{ 'pass' if row.passed else 'fail' }}">{{ 'PASS' if row.passed else 'FAIL' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="summary">
+            <div class="summary-card">
+                <div class="value">{{ total_obtained }}</div>
+                <div class="label">Marks Obtained</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">{{ total_max }}</div>
+                <div class="label">Total Marks</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">{{ overall_percentage }}%</div>
+                <div class="label">Percentage</div>
+            </div>
+            <div class="summary-card">
+                <div class="value">{{ overall_grade }}</div>
+                <div class="label">Overall Grade</div>
+            </div>
+        </div>
+
+        <div class="result-banner {{ 'result-pass' if overall_passed else 'result-fail' }}">
+            Status: {{ 'PASS' if overall_passed else 'FAIL' }}
+        </div>
+        {% else %}
+        <div class="empty">No exam results recorded for this student yet.</div>
+        {% endif %}
+
+        <div class="signatures">
+            <div class="sign-box">Class Teacher</div>
+            <div class="sign-box">Parent / Guardian</div>
+            <div class="sign-box">Principal</div>
+        </div>
+
+        <div class="footer-note">
+            This is a computer-generated report card from SchoolSync. Generated on {{ issued_on.strftime('%b %d, %Y') }}.
+        </div>
+    </div>
+</body>
+</html>

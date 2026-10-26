@@ -1,0 +1,19 @@
+{% extends "admission/base.html" %}
+
+{% block title %}Application Submitted - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h1>Application submitted</h1>
+        <p>Your application has been received for GR Office review.</p>
+        <p><strong>Application reference:</strong> <code>{{ application_ref }}</code></p>
+        <div class="alert alert-warning" role="alert">
+            <strong>Save your private access code now.</strong> It is shown only once and is required with your reference to view status or submit requested corrections. It expires {{ token_expires_at.strftime('%b %d, %Y') }}.
+        </div>
+        <p><strong>Private access code:</strong></p>
+        <pre class="temporary-password-value"><code>{{ access_token }}</code></pre>
+        <a class="btn btn-primary" href="{{ url_for('admission.status_lookup') }}">I saved my access code</a>
+    </div>
+</div>
+{% endblock %}

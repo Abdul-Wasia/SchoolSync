@@ -6,19 +6,42 @@
 <div class="page-header">
     <div>
         <h1>Timetable Management</h1>
-        <p class="page-subtitle">Manage weekly class schedules</p>
+        <p class="page-subtitle">Manage weekly class schedules section by section</p>
+    </div>
+</div>
+
+<!-- Section Picker -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-layer-group"></i> Choose a Section</h3>
+        {% if sections %}
+        {% set current = sections | selectattr('id', 'equalto', selected_section_id) | first %}
+        {% if current %}
+        <span class="badge badge-primary">{{ current.grade_name }} - {{ current.name }}</span>
+        {% endif %}
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="section-picker">
+            {% for section in sections %}
+            <a href="{{ url_for('fa.timetable', section_id=section.id) }}"
+               class="{% if section.id == selected_section_id %}active{% endif %}">
+                {{ section.grade_name }} - {{ section.name }}
+            </a>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
 <!-- Add Timetable Slot -->
-<div class="form-card">
+<div class="form-card" style="margin-top: 1.5rem;">
     <div class="form-card-header">
         <div class="form-card-icon" style="background:linear-gradient(135deg,#16A34A,#15803D);">
             <i class="fas fa-plus"></i>
         </div>
         <div>
             <h3>Add Timetable Slot</h3>
-            <p>Schedule a new class period</p>
+            <p>Schedule a new class period for the selected section</p>
         </div>
     </div>
     <form method="POST" class="form-grid">
@@ -26,9 +49,10 @@
         <div class="form-group">
             <label><i class="fas fa-layer-group"></i> Section *</label>
             <select name="section_id" class="form-control" required>
-                <option value="">Select Section</option>
                 {% for section in sections %}
-                <option value="{{ section.id }}">{{ section.grade_name }} - {{ section.name }}</option>
+                <option value="{{ section.id }}" {% if section.id == selected_section_id %}selected{% endif %}>
+                    {{ section.grade_name }} - {{ section.name }}
+                </option>
                 {% endfor %}
             </select>
         </div>
@@ -46,7 +70,7 @@
             <select name="teacher_id" class="form-control" required>
                 <option value="">Select Teacher</option>
                 {% for teacher in teachers %}
-                <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+                <option value="{{ teacher.id }}">{{ teacher.name }} &mdash; {{ teacher.subject }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -89,18 +113,17 @@
 <!-- Current Timetable -->
 <div class="card" style="margin-top: 1.5rem;">
     <div class="card-header">
-        <h3><i class="fas fa-calendar-alt"></i> Current Timetable</h3>
+        <h3><i class="fas fa-calendar-alt"></i> Weekly Timetable</h3>
+        <span class="badge badge-primary">{{ timetable|length }} periods</span>
     </div>
     <div class="card-body">
         {% if timetable %}
         <div class="timetable-grid">
-            <div class="timetable-header">
-                <div class="timetable-cell header">Period</div>
-                {% for day in days %}
-                <div class="timetable-cell header">{{ day }}</div>
-                {% endfor %}
-            </div>
-            
+            <div class="timetable-cell header">Period</div>
+            {% for day in days %}
+            <div class="timetable-cell header">{{ day }}</div>
+            {% endfor %}
+
             {% for period in range(1, 9) %}
             <div class="timetable-cell period-header">Period {{ period }}</div>
             {% for day in days %}
@@ -110,12 +133,13 @@
                     {% for slot in slots %}
                     <div class="timetable-slot" style="background: {{ subjectColor(slot.subject_name) }}">
                         <strong>{{ slot.subject_name }}</strong>
-                        <br><small>{{ slot.teacher_name }}</small>
-                        <br><small>{{ slot.section_name }}</small>
-                        <br><small>{{ slot.room_type }}</small>
+                        <small>{{ slot.teacher_name }}</small>
+                        <small>{{ slot.start_time|format_time }} - {{ slot.end_time|format_time }}</small>
+                        <small>{{ slot.room_type }}</small>
                         <form method="POST" style="margin-top: 0.5rem;">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                            <input type="hidden" name="section_id" value="{{ selected_section_id }}">
                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this slot?')">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -132,7 +156,7 @@
         {% else %}
         <div class="empty-state">
             <i class="fas fa-calendar-alt"></i>
-            <p>No timetable slots created</p>
+            <p>No timetable slots created for this section</p>
         </div>
         {% endif %}
     </div>

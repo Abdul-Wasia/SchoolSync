@@ -1,0 +1,65 @@
+{% extends "admission/base.html" %}
+
+{% block title %}Application Status - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Application status</h1>
+        <p class="page-subtitle">Reference <code>{{ application.application_ref }}</code></p>
+    </div>
+    <a class="btn btn-outline" href="{{ url_for('admission.status_lookup') }}">Check another application</a>
+</div>
+<div class="card">
+    <div class="card-body">
+        <p><strong>Applicant:</strong> {{ application.applicant_name }}</p>
+        <p><strong>Applied grade:</strong> {{ application.applied_grade }}</p>
+        <p><strong>Status:</strong> <span class="badge badge-primary">{{ application.status }}</span></p>
+        <p><strong>Submitted:</strong> {{ application.submitted_at.strftime('%b %d, %Y') if application.submitted_at else '—' }}</p>
+        <p>For security, uploaded documents are not displayed on this public status page.</p>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header"><h2>Document status</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Document</th><th>Status</th><th>Review note</th></tr></thead>
+                <tbody>
+                {% for category in categories %}
+                    {% set document = documents.get(category) %}
+                    <tr>
+                        <td>{{ category }}{% if category in required_documents %} *{% endif %}</td>
+                        <td>{{ document.status if document else 'Not submitted' }}</td>
+                        <td>{{ document.remarks if document and document.remarks else '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% if application.status in ['Incomplete', 'Corrections Requested'] %}
+<div class="card">
+    <div class="card-header"><h2>Submit requested documents</h2></div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('admission.submit_corrections') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-grid">
+            {% for category in categories %}
+                {% set document = documents.get(category) %}
+                {% if (category in required_documents and not document) or (document and document.status in ['Rejected', 'Replacement Requested']) %}
+                <div class="form-group">
+                    <label for="correction_{{ loop.index }}">{{ category }}</label>
+                    <input id="correction_{{ loop.index }}" type="file" name="{{ upload_fields[category] }}"
+                           class="form-control" accept=".pdf,.docx,.jpg,.jpeg,.png">
+                </div>
+                {% endif %}
+            {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Submit corrections</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

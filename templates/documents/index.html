@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Documents Center - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Documents Center</h1>
+        <p class="page-subtitle">Generate printable report cards, official certificates, fee challans, and attendance master registers</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('documents.attendance_register') }}" class="btn btn-outline">
+            <i class="fas fa-table"></i> Monthly Attendance Register
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-filter"></i> Filter Students</h3>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="form-grid">
+            <div class="form-group">
+                <label for="docMonth">Month (challan)</label>
+                <input type="text" id="docMonth" name="month" class="form-control"
+                       value="{{ selected_month }}" placeholder="e.g. Oct 2026">
+            </div>
+            <div class="form-group">
+                <label for="docGrade">Grade</label>
+                <select name="grade_id" id="docGrade" class="form-control">
+                    <option value="">All Grades</option>
+                    {% for grade in grades %}
+                    <option value="{{ grade.id }}" {% if grade_id == grade.id %}selected{% endif %}>{{ grade.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="docSection">Section</label>
+                <select name="section_id" id="docSection" class="form-control">
+                    <option value="">All Sections</option>
+                    {% for section in sections %}
+                    <option value="{{ section.id }}" {% if section_id == section.id %}selected{% endif %}>{{ section.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="docExamType">Exam Type (report card)</label>
+                <select name="exam_type" id="docExamType" class="form-control">
+                    <option value="">All Exams</option>
+                    {% for et in exam_types %}
+                    <option value="{{ et }}" {% if exam_type == et %}selected{% endif %}>{{ et }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="docSearch">Search</label>
+                <input type="search" id="docSearch" name="search" class="form-control"
+                       value="{{ search }}" placeholder="Name, student ID, or roll number">
+            </div>
+            <div class="form-group" style="align-self: end;">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Apply</button>
+                {% if grade_id or section_id or search or exam_type %}
+                <a href="{{ url_for('documents.index') }}" class="btn btn-outline">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3><i class="fas fa-file-alt"></i> Students</h3>
+        <span class="badge badge-info">{{ students | length }} found</span>
+    </div>
+    <div class="card-body">
+        {% if students %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>Student</th>
+                        <th>Class</th>
+                        <th>Parent Contact</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    {% set wa_message = 'Dear Parent, this is a reminder regarding ' ~ student.name ~ ' (Roll ' ~ (student.roll_number or '-') ~ '). Kindly contact the school office. - SchoolSync' %}
+                    <tr>
+                        <td>{{ student.roll_number or '-' }}</td>
+                        <td>
+                            <strong>{{ student.name }}</strong><br>
+                            <small class="text-muted">{{ student.student_system_id }}</small>
+                        </td>
+                        <td>{{ student.grade_name or 'N/A' }}{% if student.section_name %} - {{ student.section_name }}{% endif %}</td>
+                        <td>{{ student.parent_contact or 'N/A' }}</td>
+                        <td>
+                            {% if exam_type %}
+                            <a href="{{ url_for('documents.report_card', student_id=student.id, exam_type=exam_type) }}"
+                               class="btn btn-sm btn-outline" target="_blank" rel="noopener" title="Print report card">
+                                <i class="fas fa-scroll"></i> Report Card
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('documents.report_card', student_id=student.id) }}"
+                               class="btn btn-sm btn-outline" target="_blank" rel="noopener" title="Print report card">
+                                <i class="fas fa-scroll"></i> Report Card
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('documents.certificate', student_id=student.id) }}"
+                               class="btn btn-sm btn-outline" target="_blank" rel="noopener" title="Official Certificate">
+                                <i class="fas fa-certificate"></i> Certificate
+                            </a>
+                            <a href="{{ url_for('documents.fee_challan', student_id=student.id, month=selected_month) }}"
+                               class="btn btn-sm btn-outline" target="_blank" rel="noopener" title="Print fee challan">
+                                <i class="fas fa-file-invoice"></i> Challan
+                            </a>
+                            <a href="{{ url_for('documents.student_conduct', student_id=student.id) }}"
+                               class="btn btn-sm btn-outline" title="Conduct & Commendations">
+                                <i class="fas fa-medal"></i> Conduct
+                            </a>
+                            {% if student.parent_contact %}
+                            <a href="{{ wa_link(student.parent_contact, wa_message) }}"
+                               class="btn btn-sm btn-success" target="_blank" rel="noopener" title="Send alert on WhatsApp">
+                                <i class="fab fa-whatsapp"></i> Alert
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-user-graduate"></i>
+            <p>No students match the selected filters.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

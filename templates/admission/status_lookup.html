@@ -1,0 +1,28 @@
+{% extends "admission/base.html" %}
+
+{% block title %}Check Admission Status - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Check application status</h1>
+        <p class="page-subtitle">Use the reference and private access code provided after submission.</p>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admission.status_lookup') }}" class="form-stack">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="application_ref">Application reference</label>
+                <input id="application_ref" name="application_ref" class="form-control" autocomplete="off" required maxlength="100">
+            </div>
+            <div class="form-group">
+                <label for="access_token">Private access code</label>
+                <input id="access_token" name="access_token" type="password" class="form-control" autocomplete="off" required maxlength="100">
+            </div>
+            <button type="submit" class="btn btn-primary">View status</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

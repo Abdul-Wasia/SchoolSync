@@ -50,6 +50,20 @@
                     <option value="Other">Other</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label><i class="fas fa-tint" style="color: #ef4444;"></i> Blood Group</label>
+                <select name="blood_group" class="form-control">
+                    <option value="">Select Blood Group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -112,6 +126,22 @@
                 <label><i class="fas fa-envelope"></i> Email (Optional)</label>
                 <input type="email" name="email" placeholder="student@email.com" class="form-control">
             </div>
+            <div class="form-group">
+                <label><i class="fas fa-user-shield"></i> Emergency Contact Name</label>
+                <input type="text" name="emergency_contact_name" placeholder="Full name of emergency contact" class="form-control">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-phone-alt"></i> Emergency Phone</label>
+                <input type="text" name="emergency_contact_phone" placeholder="Emergency contact phone number" class="form-control">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-people-arrows"></i> Emergency Relationship</label>
+                <input type="text" name="emergency_relation" placeholder="e.g. Mother, Uncle, Guardian" class="form-control">
+            </div>
+            <div class="form-group full-width">
+                <label><i class="fas fa-notes-medical" style="color: #ef4444;"></i> Medical Notes &amp; Allergies</label>
+                <textarea name="medical_notes" rows="2" placeholder="List any chronic medical conditions, medications, or allergies..." class="form-control"></textarea>
+            </div>
         </div>
     </div>
 
@@ -140,33 +170,47 @@
     </div>
 </div>
 
-<div class="grid-2">
+<div class="grid-2 verify-document-layout">
     <!-- Upload Document -->
-    <div class="card">
+    <div class="card verify-upload-card">
         <div class="card-header">
             <h3><i class="fas fa-upload" style="color:var(--primary);margin-right:6px;"></i>Upload Document</h3>
         </div>
         <div class="card-body">
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" class="verify-upload-form" id="studentDocumentUpload">
                 <input type="hidden" name="action" value="upload_doc">
                 <div class="form-group">
-                    <label>Document Type *</label>
-                    <select name="document_type" required>
+                    <label for="verifyDocumentType">Document Type <span aria-hidden="true">*</span></label>
+                    <select name="document_type" id="verifyDocumentType" class="form-control" required>
                         <option value="">Select Type</option>
                         {% for dt in doc_types %}
                         <option value="{{ dt }}">{{ dt }}</option>
                         {% endfor %}
                     </select>
+                    <small class="verify-upload-hint">Choose the type that matches the document you're uploading.</small>
+                </div>
+                <div class="form-group verify-file-group">
+                    <label for="verifyDocumentFile">Document File <span aria-hidden="true">*</span></label>
+                    <div class="verify-drop-zone" id="verifyDropZone">
+                        <div class="verify-drop-icon" aria-hidden="true"><i class="fas fa-cloud-arrow-up"></i></div>
+                        <strong>Choose a document to upload</strong>
+                        <span class="verify-drop-instructions">Select a file or drag and drop it here</span>
+                        <input type="file" name="document" id="verifyDocumentFile" class="form-control verify-file-input"
+                               required accept=".pdf,.png,.jpg,.jpeg,.docx">
+                        <small class="verify-upload-hint">PDF, PNG, JPG, JPEG, or DOCX; maximum 16 MB</small>
+                        <div class="verify-file-selection" id="verifyFileSelection" aria-live="polite" hidden>
+                            <i class="fas fa-file-lines" aria-hidden="true"></i>
+                            <span id="verifyFileName"></span>
+                            <small id="verifyFileSize"></small>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Document File *</label>
-                    <input type="file" name="document" required accept=".pdf,.png,.jpg,.jpeg,.docx">
+                    <label for="verifyDocumentRemarks">Remarks <span class="verify-optional">(optional)</span></label>
+                    <textarea name="remarks" id="verifyDocumentRemarks" class="form-control" rows="3"
+                              placeholder="Add any useful details about this document"></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Remarks</label>
-                    <textarea name="remarks" rows="2"></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary verify-upload-submit">
                     <i class="fas fa-upload"></i> Upload Document
                 </button>
             </form>
@@ -174,7 +218,7 @@
     </div>
     
     <!-- Documents List -->
-    <div class="card">
+    <div class="card verify-documents-card">
         <div class="card-header">
             <h3><i class="fas fa-file-alt" style="color:var(--warning);margin-right:6px;"></i>Documents ({{ documents|length }})</h3>
         </div>
@@ -197,6 +241,13 @@
                             <td><span class="badge badge-{{ 'success' if doc.verification_status == 'Verified' else 'warning' if doc.verification_status == 'Pending' else 'danger' }}">{{ doc.verification_status }}</span></td>
                             <td>{{ doc.created_at.strftime('%b %d, %Y') }}</td>
                             <td>
+                                {% if doc.file_available %}
+                                <a href="{{ url_for('gr.document_file', doc_id=doc.id) }}" class="btn btn-sm btn-outline" target="_blank" rel="noopener noreferrer">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                {% else %}
+                                <span class="text-muted">File unavailable. Upload a replacement above.</span>
+                                {% endif %}
                                 {% if doc.verification_status != 'Verified' %}
                                 <form method="POST" style="display:inline;">
                                     <input type="hidden" name="action" value="verify_doc">
@@ -230,7 +281,7 @@
             </div>
             {% endif %}
             {% else %}
-            <div class="empty-state">
+            <div class="empty-state verify-documents-empty">
                 <i class="fas fa-file-alt"></i>
                 <h3>No Documents Uploaded</h3>
                 <p>Upload required documents to verify this student.</p>
@@ -239,6 +290,60 @@
         </div>
     </div>
 </div>
+<script>
+(function() {
+    var dropZone = document.getElementById('verifyDropZone');
+    var fileInput = document.getElementById('verifyDocumentFile');
+    var fileSelection = document.getElementById('verifyFileSelection');
+    var fileName = document.getElementById('verifyFileName');
+    var fileSize = document.getElementById('verifyFileSize');
+
+    if (!dropZone || !fileInput || !fileSelection || !fileName || !fileSize) return;
+
+    function showSelectedFile(file) {
+        if (!file) {
+            fileSelection.hidden = true;
+            fileName.textContent = '';
+            fileSize.textContent = '';
+            return;
+        }
+
+        var size = file.size < 1024 * 1024
+            ? Math.max(1, Math.round(file.size / 1024)) + ' KB'
+            : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+        fileName.textContent = file.name;
+        fileSize.textContent = size;
+        fileSelection.hidden = false;
+    }
+
+    fileInput.addEventListener('change', function() {
+        showSelectedFile(fileInput.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        dropZone.classList.add('is-dragging');
+    });
+
+    dropZone.addEventListener('dragleave', function(event) {
+        if (!dropZone.contains(event.relatedTarget)) {
+            dropZone.classList.remove('is-dragging');
+        }
+    });
+
+    dropZone.addEventListener('drop', function(event) {
+        event.preventDefault();
+        dropZone.classList.remove('is-dragging');
+        var files = event.dataTransfer && event.dataTransfer.files;
+        if (!files || !files.length) return;
+
+        var transfer = new DataTransfer();
+        transfer.items.add(files[0]);
+        fileInput.files = transfer.files;
+        showSelectedFile(files[0]);
+    });
+})();
+</script>
 {% endif %}
 
 {% endblock %}

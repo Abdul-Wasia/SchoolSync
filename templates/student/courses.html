@@ -43,7 +43,7 @@
                 <i class="fas fa-book-open"></i>
             </div>
             <div class="course-card-title">
-                <h3>{{ course.subject_name }}</h3>
+                <h3><a class="student-course-title-link" href="{{ url_for('student.course_detail', subject_id=course.subject_id) }}">{{ course.subject_name }}</a></h3>
                 <span class="badge badge-{{ 'primary' if course.subject_type == 'Core' else 'info' }}">{{ course.subject_type }}</span>
             </div>
         </div>
@@ -58,6 +58,9 @@
             </div>
         </div>
         <div class="course-card-footer">
+            <a href="{{ url_for('student.course_detail', subject_id=course.subject_id) }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-arrow-right"></i> Open Course
+            </a>
             <a href="{{ url_for('student.attendance') }}?subject_id={{ course.subject_id }}" class="btn btn-sm btn-outline">
                 <i class="fas fa-chart-line"></i> Attendance
             </a>

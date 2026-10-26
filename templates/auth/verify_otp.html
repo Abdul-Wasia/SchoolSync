@@ -35,6 +35,7 @@
                 {% endwith %}
                 
                 <form method="POST" action="{{ url_for('auth.verify_otp') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label>OTP Code</label>
                         <div class="otp-inputs">
@@ -50,7 +51,10 @@
                 </form>
                 
                 <div class="login-footer">
-                    <a href="{{ url_for('auth.resend_otp') }}" class="btn btn-outline btn-sm">Resend OTP</a>
+                    <form method="POST" action="{{ url_for('auth.resend_otp') }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline btn-sm">Resend OTP</button>
+                    </form>
                     <a href="{{ url_for('auth.forgot_password') }}"><i class="fas fa-arrow-left"></i> Back</a>
                 </div>
             </div>

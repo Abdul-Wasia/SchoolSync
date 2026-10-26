@@ -37,6 +37,7 @@
                         <td>
                             {% if app.status == 'Pending' %}
                             <form method="POST" action="{{ url_for('teacher.respond_leave_request') }}" style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="leave_id" value="{{ app.id }}">
                                 <input type="text" name="response_note" class="form-control" placeholder="Notes" style="max-width: 160px;">
                                 <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">Approve</button>

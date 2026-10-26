@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Logout - SchoolSync{% endblock %}
+
+{% block content %}
+<section class="card" aria-labelledby="logoutTitle">
+    <div class="card-header">
+        <h1 id="logoutTitle">Confirm logout</h1>
+    </div>
+    <div class="card-body">
+        <p>Are you sure you want to log out?</p>
+        <form method="POST" action="{{ url_for('auth.logout') }}">
+            <button class="btn btn-primary" type="submit">Log out</button>
+            <a class="btn btn-outline" href="{{ url_for('index') }}">Cancel</a>
+        </form>
+    </div>
+</section>
+{% endblock %}

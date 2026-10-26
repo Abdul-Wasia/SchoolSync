@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}SchoolSync{% endblock %}</title>
     <script>
       (function() {
@@ -22,7 +23,8 @@
             <button class="sidebar-toggle-btn" onclick="toggleSidebar()" id="sidebarToggleBtn">
                 <span></span><span></span><span></span>
             </button>
-            <div class="logo-dropdown-container" onclick="toggleGlobalUserMenu()">
+            <a href="{{ url_for('index') }}" class="logo-dropdown-container"
+               aria-label="Go to your dashboard" title="Go to your dashboard">
                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
                     <rect width="32" height="32" rx="8" fill="#2563EB"/>
                     <path d="M16 4L4 10v2h24v-2L16 4z" fill="white"/>
@@ -33,28 +35,13 @@
                     <rect x="13" y="10" width="6" height="4" fill="#93C5FD"/>
                 </svg>
                 <span class="brand-text">School<span style="color:#60A5FA">Sync</span></span>
-            </div>
-            
-            <!-- Global User Dropdown Menu -->
-            <div class="global-user-menu" id="globalUserMenu">
-                <div class="profile-dropdown">
-                    <div class="profile-header">
-                        <div class="profile-avatar-lg">
-                            {{ session.username[0].upper() if session.username else 'U' }}
-                        </div>
-                        <div class="profile-details">
-                            <div class="profile-name">{{ session.username }}</div>
-                            <div class="profile-role">{{ session.user_type }}</div>
-                        </div>
-                    </div>
-                    <div class="profile-footer">
-                        <a href="/profile" class="profile-action"><i class="fas fa-user-cog"></i> My Account Settings</a>
-                        <a href="{{ url_for('auth.logout') }}" class="profile-action logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                    </div>
-                </div>
-            </div>
+            </a>
         </div>
         <div class="nav-right">
+            <div class="nav-clock" aria-label="Current date and time">
+                <span id="live-date">{{ now.strftime('%a, %b %d') }}</span>
+                <time id="live-time">{{ now.strftime('%I:%M:%S %p') }}</time>
+            </div>
             <!-- Notifications -->
             <div class="nav-item dropdown" id="notificationDropdown">
                 <button class="nav-btn icon-btn" onclick="toggleNotifications()" aria-label="Notifications">
@@ -102,7 +89,9 @@
                         </div>
                         <div class="profile-footer">
                             <a href="/profile" class="profile-action"><i class="fas fa-user-cog"></i> My Account Settings</a>
-                            <a href="{{ url_for('auth.logout') }}" class="profile-action logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                            <form method="POST" action="{{ url_for('auth.logout') }}">
+                                <button type="submit" class="profile-action logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -125,6 +114,12 @@
                 <a href="{{ url_for('admin.dashboard') }}" class="slink {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
                 </a>
+                <a href="{{ url_for('notices.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('notices.') %}active{% endif %}">
+                    <i class="fas fa-bullhorn"></i> <span>Notice Board</span>
+                </a>
+                <a href="{{ url_for('calendar.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Academic Calendar</span>
+                </a>
                 <a href="{{ url_for('admin.users') }}" class="slink {% if request.endpoint == 'admin.users' %}active{% endif %}">
                     <i class="fas fa-users"></i> <span>Users</span>
                 </a>
@@ -140,9 +135,21 @@
                 <a href="{{ url_for('admin.override_attendance') }}" class="slink {% if request.endpoint == 'admin.override_attendance' %}active{% endif %}">
                     <i class="fas fa-edit"></i> <span>Override Attendance</span>
                 </a>
+                <a href="{{ url_for('documents.index') }}" class="slink {% if request.endpoint == 'documents.index' %}active{% endif %}">
+                    <i class="fas fa-file-alt"></i> <span>Documents Center</span>
+                </a>
+                <a href="{{ url_for('documents.attendance_register') }}" class="slink {% if request.endpoint == 'documents.attendance_register' %}active{% endif %}">
+                    <i class="fas fa-table"></i> <span>Attendance Register</span>
+                </a>
                 {% elif session.user_type == 'FA' %}
                 <a href="{{ url_for('fa.dashboard') }}" class="slink {% if request.endpoint == 'fa.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('notices.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('notices.') %}active{% endif %}">
+                    <i class="fas fa-bullhorn"></i> <span>Notice Board</span>
+                </a>
+                <a href="{{ url_for('calendar.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Academic Calendar</span>
                 </a>
                 <a href="{{ url_for('fa.teacher_attendance') }}" class="slink {% if request.endpoint == 'fa.teacher_attendance' %}active{% endif %}">
                     <i class="fas fa-user-check"></i> <span>Teacher Attendance</span>
@@ -165,6 +172,15 @@
                 <a href="{{ url_for('fa.fees') }}" class="slink {% if request.endpoint == 'fa.fees' %}active{% endif %}">
                     <i class="fas fa-wallet"></i> <span>Fees</span>
                 </a>
+                <a href="{{ url_for('documents.defaulters') }}" class="slink {% if request.endpoint == 'documents.defaulters' %}active{% endif %}">
+                    <i class="fas fa-user-clock"></i> <span>Defaulters &amp; Fees</span>
+                </a>
+                <a href="{{ url_for('documents.index') }}" class="slink {% if request.endpoint == 'documents.index' %}active{% endif %}">
+                    <i class="fas fa-file-alt"></i> <span>Documents Center</span>
+                </a>
+                <a href="{{ url_for('documents.attendance_register') }}" class="slink {% if request.endpoint == 'documents.attendance_register' %}active{% endif %}">
+                    <i class="fas fa-table"></i> <span>Attendance Register</span>
+                </a>
                 <a href="{{ url_for('fa.exam_schedule') }}" class="slink {% if request.endpoint == 'fa.exam_schedule' %}active{% endif %}">
                     <i class="fas fa-clipboard-list"></i> <span>Exam Schedule</span>
                 </a>
@@ -175,18 +191,33 @@
                 <a href="{{ url_for('teacher.dashboard') }}" class="slink {% if request.endpoint == 'teacher.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
                 </a>
+                <a href="{{ url_for('notices.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('notices.') %}active{% endif %}">
+                    <i class="fas fa-bullhorn"></i> <span>Notice Board</span>
+                </a>
+                <a href="{{ url_for('calendar.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Academic Calendar</span>
+                </a>
                 <a href="{{ url_for('teacher.attendance') }}" class="slink {% if request.endpoint == 'teacher.attendance' %}active{% endif %}">
-                    <i class="fas fa-clipboard-check"></i> <span>Attendance</span>
+                    <i class="fas fa-clipboard-check"></i> <span>Daily Attendance</span>
+                </a>
+                <a href="{{ url_for('documents.attendance_register') }}" class="slink {% if request.endpoint == 'documents.attendance_register' %}active{% endif %}">
+                    <i class="fas fa-table"></i> <span>Attendance Register</span>
                 </a>
                 <a href="{{ url_for('teacher.leave_requests') }}" class="slink {% if request.endpoint == 'teacher.leave_requests' %}active{% endif %}">
                     <i class="fas fa-envelope-open-text"></i> <span>Leave Requests</span>
                 </a>
-                <a href="{{ url_for('ai.quiz_page') }}" class="slink {% if request.endpoint == 'ai.quiz_page' %}active{% endif %}">
-                    <i class="fas fa-brain"></i> <span>AI Tools</span>
+                <a href="{{ url_for('ai.chat_page') }}" class="slink {% if request.endpoint in ['ai.chat_page', 'ai.quiz_page', 'ai.summarizer_page', 'ai.study_planner_page'] %}active{% endif %}">
+                    <i class="fas fa-comments"></i> <span>AI Assistant</span>
                 </a>
                 {% elif session.user_type == 'Student' %}
                 <a href="{{ url_for('student.dashboard') }}" class="slink {% if request.endpoint == 'student.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('notices.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('notices.') %}active{% endif %}">
+                    <i class="fas fa-bullhorn"></i> <span>Notice Board</span>
+                </a>
+                <a href="{{ url_for('calendar.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Academic Calendar</span>
                 </a>
                 <a href="{{ url_for('student.courses') }}" class="slink {% if request.endpoint == 'student.courses' %}active{% endif %}">
                     <i class="fas fa-book"></i> <span>My Courses</span>
@@ -206,17 +237,8 @@
                 <a href="{{ url_for('student.homework') }}" class="slink {% if request.endpoint == 'student.homework' %}active{% endif %}">
                     <i class="fas fa-book-open"></i> <span>Homework</span>
                 </a>
-                <a href="{{ url_for('ai.summarizer_page') }}" class="slink {% if request.endpoint == 'ai.summarizer_page' %}active{% endif %}">
-                    <i class="fas fa-brain"></i> <span>AI Summarizer</span>
-                </a>
-                <a href="{{ url_for('ai.quiz_page') }}" class="slink {% if request.endpoint == 'ai.quiz_page' %}active{% endif %}">
-                    <i class="fas fa-question-circle"></i> <span>AI Quiz</span>
-                </a>
-                <a href="{{ url_for('ai.study_plan_page') }}" class="slink {% if request.endpoint == 'ai.study_plan_page' %}active{% endif %}">
-                    <i class="fas fa-route"></i> <span>Study Plan</span>
-                </a>
                 <a href="{{ url_for('ai.chat_page') }}" class="slink {% if request.endpoint == 'ai.chat_page' %}active{% endif %}">
-                    <i class="fas fa-comments"></i> <span>AI Tutor</span>
+                    <i class="fas fa-comments"></i> <span>AI Assistant</span>
                 </a>
                 <a href="{{ url_for('student.fees') }}" class="slink {% if request.endpoint == 'student.fees' %}active{% endif %}">
                     <i class="fas fa-wallet"></i> <span>Fees</span>
@@ -234,15 +256,42 @@
                 <a href="{{ url_for('principal.dashboard') }}" class="slink {% if request.endpoint == 'principal.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
                 </a>
+                <a href="{{ url_for('notices.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('notices.') %}active{% endif %}">
+                    <i class="fas fa-bullhorn"></i> <span>Notice Board</span>
+                </a>
+                <a href="{{ url_for('calendar.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Academic Calendar</span>
+                </a>
+                <a href="{{ url_for('documents.defaulters') }}" class="slink {% if request.endpoint == 'documents.defaulters' %}active{% endif %}">
+                    <i class="fas fa-user-clock"></i> <span>Defaulters &amp; Fees</span>
+                </a>
+                <a href="{{ url_for('documents.index') }}" class="slink {% if request.endpoint == 'documents.index' %}active{% endif %}">
+                    <i class="fas fa-file-alt"></i> <span>Documents Center</span>
+                </a>
+                <a href="{{ url_for('documents.attendance_register') }}" class="slink {% if request.endpoint == 'documents.attendance_register' %}active{% endif %}">
+                    <i class="fas fa-table"></i> <span>Attendance Register</span>
+                </a>
                 {% elif session.user_type == 'GR_Office' %}
                 <a href="{{ url_for('gr.dashboard') }}" class="slink {% if request.endpoint == 'gr.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('notices.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('notices.') %}active{% endif %}">
+                    <i class="fas fa-bullhorn"></i> <span>Notice Board</span>
+                </a>
+                <a href="{{ url_for('calendar.index') }}" class="slink {% if request.endpoint and request.endpoint.startswith('calendar.') %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> <span>Academic Calendar</span>
                 </a>
                 <a href="{{ url_for('gr.register') }}" class="slink {% if request.endpoint == 'gr.register' %}active{% endif %}">
                     <i class="fas fa-user-plus"></i> <span>Register Student</span>
                 </a>
                 <a href="{{ url_for('gr.upload_docs') }}" class="slink {% if request.endpoint == 'gr.upload_docs' %}active{% endif %}">
                     <i class="fas fa-file-upload"></i> <span>Upload Documents</span>
+                </a>
+                <a href="{{ url_for('admission.gr_admissions') }}" class="slink {% if request.endpoint and request.endpoint.startswith('admission.gr_') %}active{% endif %}">
+                    <i class="fas fa-file-signature"></i> <span>Admissions</span>
+                </a>
+                <a href="{{ url_for('documents.index') }}" class="slink {% if request.endpoint == 'documents.index' %}active{% endif %}">
+                    <i class="fas fa-file-alt"></i> <span>Documents &amp; Certificates</span>
                 </a>
                 {% endif %}
             </nav>
@@ -291,9 +340,9 @@
                 }, 5000);
             });
             
-            document.querySelectorAll('.stat-number').forEach(function(el) {
-                var target = parseInt(el.dataset.target || el.textContent);
-                animateNumber(el, target);
+            document.querySelectorAll('.stat-number[data-target]').forEach(function(el) {
+                var target = parseInt(el.dataset.target, 10);
+                if (!isNaN(target)) animateNumber(el, target);
             });
         });
     </script>

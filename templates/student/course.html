@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.subject_name }} - {{ student.grade_name }} - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="student-course-page">
+    <header class="page-header student-course-heading">
+        <div>
+            <a class="student-course-back" href="{{ url_for('student.courses') }}">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> My Courses
+            </a>
+            <h1>{{ course.subject_name }}</h1>
+            <p class="page-subtitle">{{ student.grade_name }} - {{ course.section_name }} · {{ course.subject_type }}</p>
+            <p class="student-course-teachers"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> {{ teacher_names|join(', ') }}</p>
+        </div>
+        <a href="{{ url_for('student.attendance', subject_id=course.subject_id) }}" class="btn btn-outline">
+            <i class="fas fa-chart-line" aria-hidden="true"></i> View Attendance
+        </a>
+    </header>
+
+    <section class="student-course-overview" aria-label="Course overview">
+        <div class="student-course-overview-item">
+            <span class="student-course-overview-icon materials-icon"><i class="fas fa-book-open" aria-hidden="true"></i></span>
+            <span><strong>{{ materials|length }}</strong><small>Learning materials</small></span>
+        </div>
+        <div class="student-course-overview-item">
+            <span class="student-course-overview-icon assignments-icon"><i class="fas fa-clipboard-list" aria-hidden="true"></i></span>
+            <span><strong>{{ assignments|length }}</strong><small>Assignments</small></span>
+        </div>
+        <div class="student-course-overview-item">
+            <span class="student-course-overview-icon teacher-icon"><i class="fas fa-user-tie" aria-hidden="true"></i></span>
+            <span><strong>{{ teacher_names|length }}</strong><small>Course teachers</small></span>
+        </div>
+    </section>
+
+    <div class="student-course-columns">
+        <section class="student-course-panel" aria-labelledby="courseMaterialsTitle">
+            <header class="student-course-panel-header">
+                <div>
+                    <span class="student-course-eyebrow">COURSE LIBRARY</span>
+                    <h2 id="courseMaterialsTitle">Learning materials</h2>
+                </div>
+                <span class="student-course-panel-count">{{ materials|length }}</span>
+            </header>
+
+            {% if materials %}
+            <ol class="course-learning-timeline">
+                {% for material in materials %}
+                <li class="course-learning-item">
+                    <span class="course-learning-step" aria-label="Lesson {{ loop.index }}">{{ loop.index }}</span>
+                    <article class="course-learning-content">
+                        <div class="course-learning-meta">
+                            <span>Lesson {{ loop.index }} · {{ material.material_type }}</span>
+                            {% if material.uploaded_at %}
+                            <time datetime="{{ material.uploaded_at.isoformat() }}">{{ material.uploaded_at.strftime('%b %d, %Y · %I:%M %p') }}</time>
+                            {% endif %}
+                        </div>
+                        <h3>{{ material.title }}</h3>
+                        <p class="course-learning-teacher">Uploaded by {{ material.teacher_name }}</p>
+                        {% if material.description %}<p class="course-learning-description">{{ material.description }}</p>{% endif %}
+                        {% if material.ai_summary %}
+                        <details class="course-material-summary">
+                            <summary><i class="fas fa-lightbulb" aria-hidden="true"></i> Study summary</summary>
+                            <p>{{ material.ai_summary }}</p>
+                        </details>
+                        {% endif %}
+                        {% if material.external_url %}
+                        <a class="btn btn-sm btn-outline course-material-open" href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer">
+                            <i class="fas fa-up-right-from-square" aria-hidden="true"></i> Open material
+                        </a>
+                        {% elif material.file_path %}
+                        {% if material.file_path.startswith('http://') or material.file_path.startswith('https://') %}
+                        <a class="btn btn-sm btn-outline course-material-open" href="{{ material.file_path }}" target="_blank" rel="noopener noreferrer">
+                            <i class="fas fa-up-right-from-square" aria-hidden="true"></i> Open material
+                        </a>
+                        {% elif material.file_available %}
+                        <a class="btn btn-sm btn-outline course-material-open" href="{{ url_for('teacher.material_file', material_id=material.id) }}" target="_blank" rel="noopener noreferrer">
+                            <i class="fas fa-download" aria-hidden="true"></i> Open material
+                        </a>
+                        {% else %}
+                        <p class="text-muted">This material file is no longer available. Ask your teacher to upload it again.</p>
+                        {% endif %}
+                        {% endif %}
+                    </article>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <div class="student-course-empty">
+                <i class="fas fa-book-open" aria-hidden="true"></i>
+                <h3>No materials yet</h3>
+                <p>Materials uploaded by your teacher will appear here in lesson order.</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="student-course-panel" aria-labelledby="courseAssignmentsTitle">
+            <header class="student-course-panel-header">
+                <div>
+                    <span class="student-course-eyebrow">YOUR COURSEWORK</span>
+                    <h2 id="courseAssignmentsTitle">Assignments</h2>
+                </div>
+                <span class="student-course-panel-count">{{ assignments|length }}</span>
+            </header>
+
+            {% if assignments %}
+            <div class="course-assignment-list">
+                {% for assignment in assignments %}
+                <article class="course-assignment-item">
+                    <div class="course-assignment-heading">
+                        <div>
+                            <span class="course-assignment-sequence">Assignment {{ loop.index }}</span>
+                            <h3>{{ assignment.title }}</h3>
+                        </div>
+                        <span class="course-assignment-status status-{{ assignment.status|lower }}">{{ assignment.status }}</span>
+                    </div>
+                    <div class="course-assignment-due">
+                        <i class="fas fa-calendar-day" aria-hidden="true"></i>
+                        <span>Due {{ assignment.due_date.strftime('%b %d, %Y · %I:%M %p') }}</span>
+                        <span class="course-assignment-marks">{{ assignment.total_marks }} marks</span>
+                    </div>
+                    {% if assignment.instructions %}<p class="course-assignment-instructions">{{ assignment.instructions }}</p>{% endif %}
+
+                    {% if assignment.submission_id %}
+                    <div class="course-submission-record">
+                        <p><i class="fas fa-check-circle" aria-hidden="true"></i> Submitted {{ assignment.submitted_at.strftime('%b %d, %Y · %I:%M %p') }}</p>
+                        {% if assignment.marks_obtained is not none %}<p class="course-submission-grade">Grade: {{ assignment.marks_obtained }}/{{ assignment.total_marks }}</p>{% endif %}
+                        {% if assignment.submission_file_available %}
+                        <a href="{{ url_for('student.submission_file', submission_id=assignment.submission_id) }}" target="_blank" rel="noopener noreferrer">View your uploaded file</a>
+                        {% elif assignment.submission_file %}
+                        <p class="text-muted">Your uploaded file is no longer available. Upload a replacement below.</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if assignment.status != 'Overdue' %}
+                    <form class="course-assignment-submit" method="POST" action="{{ url_for('student.submit_assignment', assignment_id=assignment.id) }}" enctype="multipart/form-data">
+                        <input type="hidden" name="return_to" value="course">
+                        <label for="response-{{ assignment.id }}">Your response <span>(optional)</span></label>
+                        <textarea id="response-{{ assignment.id }}" name="text_response" rows="3" placeholder="Write a note or answer for your teacher">{{ assignment.submission_text or '' }}</textarea>
+                        <label class="course-assignment-file" for="file-{{ assignment.id }}">
+                            <i class="fas fa-cloud-arrow-up" aria-hidden="true"></i>
+                            <span>{{ 'Replace uploaded file' if assignment.submission_file else 'Attach your work' }}</span>
+                            <input id="file-{{ assignment.id }}" type="file" name="file" accept=".pdf,.docx,.zip,.png,.jpg,.jpeg">
+                        </label>
+                        <small>PDF, DOCX, ZIP, PNG, or JPG · maximum 16 MB</small>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                            {{ 'Update submission' if assignment.submission_id else 'Submit assignment' }}
+                        </button>
+                    </form>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="student-course-empty">
+                <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+                <h3>No assignments yet</h3>
+                <p>Assignments for this course will appear here with due dates and submission details.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

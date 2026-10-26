@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}Student Admission - SchoolSync{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admission.css') }}">
+</head>
+<body class="public-admission-body">
+    <main class="public-admission-page">
+        <header class="public-admission-header">
+            <div class="public-admission-brand">SchoolSync <span>Student Admissions</span></div>
+            <p>Secure public application form</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="public-admission-alerts" id="alertsContainer">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="status">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+        <footer class="public-admission-footer">
+            SchoolSync Student Admissions
+        </footer>
+    </main>
+</body>
+</html>

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Academic Calendar & Events - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-calendar-alt" style="color: #2563eb; margin-right: 8px;"></i> Academic Calendar & Events</h1>
+        <p class="page-subtitle">Official schedule of school terms, examinations, public holidays, and institutional events</p>
+    </div>
+    <div class="header-actions">
+        {% if is_staff %}
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('createEventModal').style.display='flex'">
+            <i class="fas fa-plus"></i> Add Event / Holiday
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; align-items: flex-start;">
+    <!-- Main Calendar Card -->
+    <div class="card">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h2 style="font-size: 1.35rem; color: #0f172a; margin: 0; font-weight: 700;">
+                    {{ current_month_name }} {{ current_year }}
+                </h2>
+                <div style="display: flex; gap: 4px;">
+                    <a href="{{ url_for('calendar.index', year=prev_year, month=prev_month, type=selected_type) }}" class="btn btn-sm btn-outline" title="Previous Month">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    <a href="{{ url_for('calendar.index', year=today.year, month=today.month) }}" class="btn btn-sm btn-outline">Today</a>
+                    <a href="{{ url_for('calendar.index', year=next_year, month=next_month, type=selected_type) }}" class="btn btn-sm btn-outline" title="Next Month">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Event Type Filter -->
+            <form method="GET" style="display: flex; gap: 8px; align-items: center;">
+                <input type="hidden" name="year" value="{{ current_year }}">
+                <input type="hidden" name="month" value="{{ current_month }}">
+                <select name="type" class="form-control" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;" onchange="this.form.submit()">
+                    <option value="All">All Event Types</option>
+                    {% for et in event_types %}
+                    <option value="{{ et }}" {% if selected_type == et %}selected{% endif %}>{{ et }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <div class="card-body" style="padding: 1rem;">
+            <!-- Weekday Headers -->
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-weight: 600; color: #64748b; font-size: 0.85rem; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;">
+                <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div style="color: #ef4444;">Sun</div>
+            </div>
+
+            <!-- Calendar Days Grid -->
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                {% for week in calendar_weeks %}
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+                    {% for cell in week %}
+                        {% if cell %}
+                        <div style="min-height: 95px; border-radius: 8px; padding: 6px; border: 1px solid {% if cell.is_today %}#3b82f6{% else %}#f1f5f9{% endif %}; background: {% if cell.is_today %}#eff6ff{% else %}#ffffff{% endif %}; display: flex; flex-direction: column; transition: all 0.15s ease;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <span style="font-size: 0.88rem; font-weight: {% if cell.is_today %}800{% else %}600{% endif %}; color: {% if cell.is_today %}#1d4ed8{% elif loop.index == 7 %}#ef4444{% else %}#334155{% endif %};">
+                                    {{ cell.day }}
+                                </span>
+                                {% if cell.is_today %}
+                                <span style="font-size: 0.65rem; background: #3b82f6; color: white; border-radius: 4px; padding: 1px 4px; font-weight: 700;">TODAY</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Events in this day -->
+                            <div style="display: flex; flex-direction: column; gap: 2px; overflow-y: auto;">
+                                {% for ev in cell.events %}
+                                <div title="{{ ev.title }} ({{ ev.event_type }}): {{ ev.description or '' }}"
+                                     style="font-size: 0.72rem; padding: 2px 4px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; 
+                                     {% if ev.event_type == 'Holiday' %}background: #fee2e2; color: #991b1b;
+                                     {% elif ev.event_type == 'Exam' %}background: #ede9fe; color: #5b21b6;
+                                     {% elif ev.event_type == 'Sports' %}background: #d1fae5; color: #065f46;
+                                     {% elif ev.event_type == 'Meeting' %}background: #fef3c7; color: #92400e;
+                                     {% elif ev.event_type == 'Celebration' %}background: #fce7f3; color: #9d174d;
+                                     {% else %}background: #e0f2fe; color: #0369a1;{% endif %}">
+                                    {{ ev.title }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div style="min-height: 95px; background: #f8fafc; border-radius: 8px; opacity: 0.4;"></div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Legend -->
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.8rem;">
+                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span> Holiday</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #8b5cf6;"></span> Examination</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981;"></span> Sports & Athletics</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b;"></span> Meeting / PTM</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6;"></span> Academic Session</span>
+                <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #ec4899;"></span> Celebration / Ceremony</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Events Sidebar -->
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-clock" style="color: #2563eb;"></i> Upcoming Schedule</h3>
+            </div>
+            <div class="card-body" style="padding: 1rem;">
+                {% if upcoming_events %}
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    {% for ev in upcoming_events %}
+                    <div style="padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
+                            <strong style="color: #1e293b; font-size: 0.92rem;">{{ ev.title }}</strong>
+                            <span class="badge" style="font-size: 0.7rem;
+                                {% if ev.event_type == 'Holiday' %}background: #fee2e2; color: #991b1b;
+                                {% elif ev.event_type == 'Exam' %}background: #ede9fe; color: #5b21b6;
+                                {% elif ev.event_type == 'Sports' %}background: #d1fae5; color: #065f46;
+                                {% elif ev.event_type == 'Meeting' %}background: #fef3c7; color: #92400e;
+                                {% elif ev.event_type == 'Celebration' %}background: #fce7f3; color: #9d174d;
+                                {% else %}background: #e0f2fe; color: #0369a1;{% endif %}">
+                                {{ ev.event_type }}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #64748b;">
+                            <i class="far fa-calendar"></i>
+                            {{ ev.start_date.strftime('%b %d, %Y') if ev.start_date else 'Date TBA' }}
+                            {% if ev.end_date and ev.end_date != ev.start_date %}
+                            – {{ ev.end_date.strftime('%b %d, %Y') }}
+                            {% endif %}
+                        </div>
+                        {% if ev.description %}
+                        <p style="margin: 0; font-size: 0.82rem; color: #475569; line-height: 1.4;">{{ ev.description }}</p>
+                        {% endif %}
+                        
+                        {% if is_staff %}
+                        <div style="margin-top: 4px;">
+                            <form method="POST" action="{{ url_for('calendar.delete', event_id=ev.id) }}" style="display: inline;" onsubmit="return confirm('Remove event from calendar?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline" style="color: #ef4444; border-color: #fecaca; padding: 2px 6px; font-size: 0.75rem;">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding: 1.5rem 0.5rem; text-align: center;">
+                    <i class="far fa-calendar-check" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 0.5rem;"></i>
+                    <p style="color: #64748b; font-size: 0.88rem; margin: 0;">No upcoming events scheduled in the next 60 days.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Event (Staff Only) -->
+{% if is_staff %}
+<div id="createEventModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 1rem;">
+    <div class="card" style="max-width: 580px; width: 100%; border-radius: 14px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3><i class="fas fa-calendar-plus"></i> Add Calendar Event / Holiday</h3>
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('createEventModal').style.display='none'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('calendar.create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="eventTitle">Event / Holiday Title <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="eventTitle" name="title" class="form-control" placeholder="e.g. Annual Sports Week / Iqbal Day Holiday" required>
+                </div>
+
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="eventType">Event Type</label>
+                        <select name="event_type" id="eventType" class="form-control">
+                            {% for et in event_types %}
+                            <option value="{{ et }}">{{ et }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventAudience">Target Audience</label>
+                        <select name="target_audience" id="eventAudience" class="form-control">
+                            {% for ta in target_audiences %}
+                            <option value="{{ ta }}">{{ ta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="eventStartDate">Start Date <span style="color: #ef4444;">*</span></label>
+                        <input type="date" id="eventStartDate" name="start_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventEndDate">End Date</label>
+                        <input type="date" id="eventEndDate" name="end_date" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="eventDesc">Description / Note</label>
+                    <textarea id="eventDesc" name="description" class="form-control" rows="3" placeholder="Additional details or instructions..."></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('createEventModal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Save to Calendar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -3,7 +3,7 @@
 {% block title %}{{ course_info.subject_name }} - {{ course_info.grade_name }} {{ course_info.section_name }} - SchoolSync{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header teacher-course-header">
     <div>
         <h1>{{ course_info.subject_name }}</h1>
         <p class="page-subtitle">{{ course_info.grade_name }} - {{ course_info.section_name }} | {{ course_info.type }}</p>
@@ -16,7 +16,7 @@
 </div>
 
 <!-- Tab Navigation -->
-<div class="tab-bar">
+<div class="tab-bar teacher-course-tabs">
     <button class="tab-btn active" onclick="showTab('attendanceTab', this)">
         <i class="fas fa-clipboard-check"></i> Attendance
     </button>
@@ -26,6 +26,9 @@
     <button class="tab-btn" onclick="showTab('studentsTab', this)">
         <i class="fas fa-users"></i> Students
     </button>
+    <button class="tab-btn" onclick="showTab('resultsTab', this)">
+        <i class="fas fa-chart-bar"></i> Results
+    </button>
     <button class="tab-btn" onclick="showTab('materialsTab', this)">
         <i class="fas fa-file"></i> Materials
     </button>
@@ -33,8 +36,8 @@
 
 <!-- Attendance Tab -->
 <div class="tab-content active" id="attendanceTab">
-    <div class="card">
-        <div class="card-header">
+    <div class="card course-attendance-card">
+        <div class="card-header course-attendance-header">
             <h3>Attendance Sheet</h3>
             <div class="header-actions">
                 {% if not attendance_marked %}
@@ -42,7 +45,7 @@
                     <i class="fas fa-plus"></i> Mark Attendance
                 </button>
                 {% else %}
-                <span class="badge badge-success">Attendance Marked for Today</span>
+                <span class="badge badge-success">Attendance Saved &mdash; You Can Update It</span>
                 {% endif %}
             </div>
         </div>
@@ -50,52 +53,63 @@
             {% if students %}
             <form method="POST" action="{{ url_for('teacher.save_attendance', subject_id=subject_id, section_id=section_id) }}" id="attendanceForm">
                 <input type="hidden" name="date" value="{{ now.date().isoformat() }}">
-                <div class="table-responsive">
-                    <table class="table attendance-table">
+                <div class="table-responsive course-attendance-table-wrap">
+                    <table class="table attendance-table course-attendance-table">
                         <thead>
                             <tr>
-                                <th style="width: 60px;">Roll No</th>
-                                <th>Student Name</th>
-                                <th style="width: 120px;">Status</th>
+                                <th class="course-attendance-roll-column">Roll No.</th>
+                                <th class="course-attendance-name-column">Student Name</th>
+                                <th class="course-attendance-status-column">Status</th>
+                                <th class="course-attendance-total-column">Total Present</th>
+                                <th class="course-attendance-total-column">Total Absent</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for student in students %}
-                            <tr id="row_{{ student.id }}">
-                                <td>{{ student.roll_number }}</td>
-                                <td>{{ student.name }}</td>
+                        <tbody>                            {% for student in students %}
+                            <tr id="row_{{ student.id }}" data-saved-status="{{ student.today_status or '' }}" data-present-total="{{ student.present_total }}" data-absent-total="{{ student.absent_total }}">
+                                <td>
+                                    <input type="hidden" name="student_ids" value="{{ student.id }}">
+                                    <span class="course-attendance-roll">{{ student.roll_number or loop.index }}</span>
+                                </td>
+                                <td>
+                                    <div class="course-attendance-student">
+                                        <span class="course-attendance-avatar" aria-hidden="true">{{ student.name[0].upper() if student.name else '?' }}</span>
+                                        <strong>{{ student.name }}</strong>
+                                    </div>
+                                </td>
                                 <td>
                                     <div class="radio-group">
                                         <label class="radio-option">
-                                            <input type="radio" name="status_{{ student.id }}" value="Present" required onchange="rowColor({{ student.id }}, 'Present'); updateAttCounts()">
+                                            <input type="radio" name="status_{{ student.id }}" value="Present" {% if student.today_status == 'Present' %}checked{% endif %} required onchange="rowColor({{ student.id }}, 'Present'); updateStudentAttendanceTotals({{ student.id }}, 'Present'); updateAttCounts()">
                                             <span class="radio-label present"><i class="fas fa-check"></i> Present</span>
                                         </label>
                                         <label class="radio-option">
-                                            <input type="radio" name="status_{{ student.id }}" value="Absent" onchange="rowColor({{ student.id }}, 'Absent'); updateAttCounts()">
+                                            <input type="radio" name="status_{{ student.id }}" value="Absent" {% if student.today_status == 'Absent' %}checked{% endif %} onchange="rowColor({{ student.id }}, 'Absent'); updateStudentAttendanceTotals({{ student.id }}, 'Absent'); updateAttCounts()">
                                             <span class="radio-label absent"><i class="fas fa-times"></i> Absent</span>
                                         </label>
                                         <label class="radio-option">
-                                            <input type="radio" name="status_{{ student.id }}" value="Late" onchange="rowColor({{ student.id }}, 'Late'); updateAttCounts()">
+                                            <input type="radio" name="status_{{ student.id }}" value="Late" {% if student.today_status == 'Late' %}checked{% endif %} onchange="rowColor({{ student.id }}, 'Late'); updateStudentAttendanceTotals({{ student.id }}, 'Late'); updateAttCounts()">
                                             <span class="radio-label late"><i class="fas fa-clock"></i> Late</span>
                                         </label>
                                         <label class="radio-option">
-                                            <input type="radio" name="status_{{ student.id }}" value="Leave" onchange="rowColor({{ student.id }}, 'Leave'); updateAttCounts()">
+                                            <input type="radio" name="status_{{ student.id }}" value="Leave" {% if student.today_status == 'Leave' %}checked{% endif %} onchange="rowColor({{ student.id }}, 'Leave'); updateStudentAttendanceTotals({{ student.id }}, 'Leave'); updateAttCounts()">
                                             <span class="radio-label leave"><i class="fas fa-calendar-times"></i> Leave</span>
                                         </label>
                                     </div>
                                 </td>
+                                <td><span class="course-attendance-total course-attendance-total--present" data-student-present-total>{{ student.present_total }}</span></td>
+                                <td><span class="course-attendance-total course-attendance-total--absent" data-student-absent-total>{{ student.absent_total }}</span></td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                <div class="attendance-summary">
-                    <span>Present: <strong id="countPresent">0</strong></span>
-                    <span>Absent: <strong id="countAbsent">0</strong></span>
-                    <span>Late: <strong id="countLate">0</strong></span>
-                    <span>Leave: <strong id="countLeave">0</strong></span>
+                <div class="attendance-summary course-attendance-summary" aria-live="polite">
+                    <span class="course-count-present"><i class="fas fa-check-circle" aria-hidden="true"></i> Present <strong id="countPresent">0</strong></span>
+                    <span class="course-count-absent"><i class="fas fa-times-circle" aria-hidden="true"></i> Absent <strong id="countAbsent">0</strong></span>
+                    <span class="course-count-late"><i class="fas fa-clock" aria-hidden="true"></i> Late <strong id="countLate">0</strong></span>
+                    <span class="course-count-leave"><i class="fas fa-calendar-times" aria-hidden="true"></i> Leave <strong id="countLeave">0</strong></span>
                 </div>
-                <div class="form-actions">
+                <div class="form-actions course-attendance-actions">
                     <button type="button" class="btn btn-outline" onclick="markAllStatus('Present')">All Present</button>
                     <button type="submit" class="btn btn-primary">Save Attendance</button>
                 </div>
@@ -139,7 +153,9 @@
                             <td>{{ assignment.due_date.strftime('%b %d, %Y %H:%M') }}</td>
                             <td>{{ assignment.total_marks }}</td>
                             <td>
-                                <a href="#" class="btn btn-sm btn-outline">View Submissions</a>
+                                <a href="{{ url_for('teacher.submissions', assignment_id=assignment.id, section_id=section_id) }}" class="btn btn-sm btn-outline">
+                                    <i class="fas fa-clipboard-list"></i> View Submissions
+                                </a>
                             </td>
                             <td>
                                 <div class="action-buttons">
@@ -207,6 +223,113 @@
     </div>
 </div>
 
+<!-- Results Tab -->
+<div class="tab-content" id="resultsTab">
+    <div class="card">
+        <div class="card-header">
+            <h3>Record Exam Results</h3>
+        </div>
+        <div class="card-body">
+            {% if students %}
+            <form method="POST" action="{{ url_for('teacher.save_results', subject_id=subject_id, section_id=section_id) }}">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Exam Type</label>
+                        <select name="exam_type" class="form-control" required>
+                            <option value="Quiz">Quiz</option>
+                            <option value="Assignment">Assignment</option>
+                            <option value="Mid-Term">Mid-Term</option>
+                            <option value="Final-Term">Final-Term</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Exam Date</label>
+                        <input type="date" name="exam_date" class="form-control" value="{{ now.date().isoformat() }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Marks</label>
+                        <input type="number" name="total_marks" class="form-control" min="0.01" max="999.99" step="0.01" required>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Roll No.</th>
+                                <th>Student</th>
+                                <th>Marks Obtained</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ student.roll_number or loop.index }}</td>
+                                <td>{{ student.name }}</td>
+                                <td>
+                                    <input type="hidden" name="student_ids" value="{{ student.id }}">
+                                    <input type="number" name="marks_{{ student.id }}" class="form-control"
+                                           min="0" step="0.01" max="999.99" aria-label="Marks for {{ student.name }}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Results</button>
+            </form>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>No active students are assigned to this section.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+        <div class="card-header">
+            <h3>Recent Results</h3>
+        </div>
+        <div class="card-body">
+            {% if course_results %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Exam</th>
+                            <th>Roll No.</th>
+                            <th>Student</th>
+                            <th>Marks</th>
+                            <th>Total</th>
+                            <th>Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in course_results %}
+                        <tr>
+                            <td>{{ result.exam_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ result.exam_type }}</td>
+                            <td>{{ result.roll_number }}</td>
+                            <td>{{ result.student_name }}</td>
+                            <td>{{ result.marks_obtained }}</td>
+                            <td>{{ result.total_marks }}</td>
+                            <td>{{ result.grade or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-chart-bar"></i>
+                <p>No results recorded for this course yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 <!-- Materials Tab -->
 <div class="tab-content" id="materialsTab">
     <div class="card">
@@ -214,7 +337,7 @@
             <h3><i class="fas fa-file"></i> Course Materials</h3>
         </div>
         <div class="card-body">
-            <form id="uploadMaterialForm" enctype="multipart/form-data">
+            <form id="uploadMaterialForm" method="POST" action="{{ url_for('teacher.upload_material', subject_id=subject_id, section_id=section_id) }}" enctype="multipart/form-data">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Title *</label>
@@ -236,7 +359,7 @@
                     </div>
                     <div class="form-group">
                         <label>File / URL</label>
-                        <input type="file" name="file" class="form-control">
+                        <input type="file" name="file" class="form-control" accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,.md,.csv,.mp4,.png,.jpg,.jpeg,.zip">
                         <small class="text-muted">Or enter an external URL:</small>
                         <input type="text" name="external_url" class="form-control" placeholder="https://example.com">
                     </div>
@@ -251,9 +374,35 @@
                         <input type="text" class="form-control" readonly value="{{ course_info.section_name }}">
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Upload Material</button>
+                <button type="submit" class="btn btn-primary" id="uploadMaterialButton" style="margin-top: 1rem;">
+                    <i class="fas fa-cloud-arrow-up"></i> Upload Material
+                </button>
             </form>
-            <div id="materialsOutput" style="margin-top: 2rem; display: none;"></div>
+            <div id="materialsOutput" class="materials-output" role="status" aria-live="polite" hidden></div>
+            <section class="course-materials-list" aria-labelledby="materialsListTitle">
+                <h4 id="materialsListTitle">Uploaded materials</h4>
+                <div id="materialsList">
+                    {% for material in materials %}
+                    <article class="course-material-item">
+                        <div>
+                            <strong>{{ material.title }}</strong>
+                            <span>{{ material.material_type }}{% if material.uploaded_at %} · {{ material.uploaded_at.strftime('%b %d, %Y') }}{% endif %}</span>
+                            {% if material.description %}<p>{{ material.description }}</p>{% endif %}
+                        </div>
+                        {% if material.external_url %}
+                        <a class="btn btn-sm btn-outline" href="{{ material.external_url }}" target="_blank" rel="noopener noreferrer">Open</a>
+                        {% elif material.file_path %}
+                        {% if material.file_available %}
+                        <a class="btn btn-sm btn-outline" href="{{ url_for('teacher.material_file', material_id=material.id) }}" target="_blank" rel="noopener noreferrer">Open</a>
+                        {% else %}
+                        <span class="text-muted">File unavailable. Upload a replacement material.</span>
+                        {% endif %}
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+                <p id="materialsEmpty" class="text-muted" {% if materials %}hidden{% endif %}>No materials uploaded for this course yet.</p>
+            </section>
         </div>
     </div>
 </div>
@@ -270,7 +419,7 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-outline" onclick="hideModal('attendanceModal')">Cancel</button>
-            <a href="{{ url_for('teacher.attendance', subject_id=subject_id, section_id=section_id) }}" class="btn btn-primary">
+            <a href="{{ url_for('teacher.attendance', course=(subject_id ~ ':' ~ section_id)) }}" class="btn btn-primary">
                 Open Full Attendance Page
             </a>
         </div>
@@ -335,18 +484,56 @@ document.addEventListener('DOMContentLoaded', function() {
 // Materials upload handler
 document.getElementById('uploadMaterialForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const form = new FormData(this);
-    fetch('{{ url_for("teacher.upload_material", subject_id=subject_id, section_id=section_id) }}', {
+    const formElement = this;
+    const form = new FormData(formElement);
+    const output = document.getElementById('materialsOutput');
+    const button = document.getElementById('uploadMaterialButton');
+    const originalButton = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    output.hidden = false;
+    output.className = 'materials-output';
+    output.textContent = 'Uploading material...';
+
+    fetch(formElement.action, {
         method: 'POST',
         body: form
-    }).then(r => r.json()).then(data => {
-        document.getElementById('materialsOutput').innerHTML = '<div class="alert ' + (data.success ? 'alert-success' : 'alert-danger') + '">' + (data.message || 'Error') + '</div>';
-        if (data.success) {
-            // Reload materials - simple reload
-            location.reload();
+    }).then(async response => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Upload failed');
+        output.className = 'materials-output success';
+        output.textContent = data.message;
+
+        const material = data.material;
+        const item = document.createElement('article');
+        item.className = 'course-material-item';
+        const details = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = material.title;
+        const meta = document.createElement('span');
+        meta.textContent = material.material_type;
+        details.append(title, meta);
+        if (material.description) {
+            const description = document.createElement('p');
+            description.textContent = material.description;
+            details.append(description);
         }
+        const link = document.createElement('a');
+        link.className = 'btn btn-sm btn-outline';
+        link.href = material.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Open';
+        item.append(details, link);
+        document.getElementById('materialsList').prepend(item);
+        document.getElementById('materialsEmpty').hidden = true;
+        formElement.reset();
     }).catch(err => {
-        document.getElementById('materialsOutput').innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>';
+        output.className = 'materials-output error';
+        output.textContent = err.message || 'Unable to upload material. Please try again.';
+    }).finally(() => {
+        button.disabled = false;
+        button.innerHTML = originalButton;
     });
 });
 
@@ -354,6 +541,23 @@ function rowColor(studentId, status) {
     const row = document.getElementById('row_' + studentId);
     row.classList.remove('status-present', 'status-absent', 'status-late', 'status-leave');
     row.classList.add('status-' + status.toLowerCase());
+}
+
+function updateStudentAttendanceTotals(studentId, status) {
+    const row = document.getElementById('row_' + studentId);
+    if (!row) return;
+
+    let presentTotal = Number(row.dataset.presentTotal || 0);
+    let absentTotal = Number(row.dataset.absentTotal || 0);
+    const savedStatus = row.dataset.savedStatus;
+
+    if (savedStatus === 'Present') presentTotal--;
+    if (savedStatus === 'Absent') absentTotal--;
+    if (status === 'Present') presentTotal++;
+    if (status === 'Absent') absentTotal++;
+
+    row.querySelector('[data-student-present-total]').textContent = Math.max(0, presentTotal);
+    row.querySelector('[data-student-absent-total]').textContent = Math.max(0, absentTotal);
 }
 
 function updateAttCounts() {
@@ -370,9 +574,16 @@ function updateAttCounts() {
 function markAllStatus(status) {
     document.querySelectorAll('.attendance-table input[type="radio"][value="' + status + '"]').forEach(radio => {
         radio.checked = true;
-        rowColor(radio.name.replace('status_', ''), status);
+        const studentId = radio.name.replace('status_', '');
+        rowColor(studentId, status);
+        updateStudentAttendanceTotals(studentId, status);
     });
     updateAttCounts();
+}
+
+if (window.location.hash === '#assignmentsTab') {
+    const assignmentsButton = document.querySelector('[onclick*="assignmentsTab"]');
+    if (assignmentsButton) showTab('assignmentsTab', assignmentsButton);
 }
 </script>
 {% endblock %}

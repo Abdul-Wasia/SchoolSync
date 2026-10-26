@@ -2,54 +2,132 @@
 
 {% block title %}Subjects - SchoolSync{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/subjects.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
+<div class="page-header subjects-page-header">
     <div>
+        <span class="subjects-eyebrow"><i class="fas fa-layer-group" aria-hidden="true"></i> Curriculum</span>
         <h1>Subjects</h1>
-        <p class="page-subtitle">Manage academic subjects</p>
+        <p class="page-subtitle">Browse subjects class by class, then open a class to see its curriculum</p>
     </div>
     <div class="header-actions">
-        <button class="btn btn-primary" onclick="showModal('createSubjectModal')">
+        <button class="btn btn-primary" onclick="openCreateSubject()">
             <i class="fas fa-plus"></i> Add Subject
         </button>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        {% if subjects %}
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Subject</th>
-                        <th>Grade</th>
-                        <th>Type</th>
-                        <th>Teachers Assigned</th>
-                        <th>Description</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for subject in subjects %}
-                    <tr>
-                        <td>{{ subject.subject_name }}</td>
-                        <td>{{ subject.grade_name }}</td>
-                        <td><span class="badge badge-info">{{ subject.type }}</span></td>
-                        <td>{{ subject.teacher_count }}</td>
-                        <td>{{ subject.description or '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="empty-state">
-            <i class="fas fa-book"></i>
-            <p>No subjects created yet</p>
-        </div>
-        {% endif %}
+<section class="subject-stats" aria-label="Subject overview">
+    <div class="subject-stat subject-stat--subjects">
+        <span class="subject-stat-icon" aria-hidden="true"><i class="fas fa-book"></i></span>
+        <div><strong>{{ subject_totals.subjects }}</strong><span>Total subjects</span></div>
     </div>
+    <div class="subject-stat subject-stat--classes">
+        <span class="subject-stat-icon" aria-hidden="true"><i class="fas fa-school"></i></span>
+        <div><strong>{{ subject_totals.classes }}</strong><span>Classes</span></div>
+    </div>
+    <div class="subject-stat subject-stat--theory">
+        <span class="subject-stat-icon" aria-hidden="true"><i class="fas fa-chalkboard-teacher"></i></span>
+        <div><strong>{{ subject_totals.theory }}</strong><span>Theory subjects</span></div>
+    </div>
+    <div class="subject-stat subject-stat--practical">
+        <span class="subject-stat-icon" aria-hidden="true"><i class="fas fa-flask"></i></span>
+        <div><strong>{{ subject_totals.practical }}</strong><span>Practical subjects</span></div>
+    </div>
+</section>
+
+<section class="subjects-toolbar" aria-label="Subject browser controls">
+    <label class="subjects-search">
+        <i class="fas fa-search" aria-hidden="true"></i>
+        <input type="search" id="subjectSearch" placeholder="Search a class or subject" autocomplete="off" aria-label="Search a class or subject">
+    </label>
+    <div class="subjects-toolbar-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="setAllClassCards(true)">
+            <i class="fas fa-expand-alt"></i> Expand all
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="setAllClassCards(false)">
+            <i class="fas fa-compress-alt"></i> Collapse all
+        </button>
+    </div>
+</section>
+
+{% if grade_groups %}
+<div class="class-subject-grid" id="classSubjectGrid">
+    {% for group in grade_groups %}
+    <details class="class-subject-card" data-class-card data-class-name="{{ group.grade.name }}">
+        <summary class="class-card-summary">
+            <span class="class-orb" aria-hidden="true">{{ group.grade.name|replace('Grade ', '')|replace('grade ', '') }}</span>
+            <span class="class-card-text">
+                <span class="class-card-title">{{ group.grade.name }}</span>
+                <span class="class-card-sub">
+                    {{ group.subject_count }} subject{{ '' if group.subject_count == 1 else 's' }}
+                    <span aria-hidden="true">&middot;</span>
+                    {{ group.grade.section_count }} section{{ '' if group.grade.section_count == 1 else 's' }}
+                </span>
+            </span>
+            <span class="class-card-side">
+                <span class="class-card-chip" title="Teacher assignments">
+                    <i class="fas fa-user-tie" aria-hidden="true"></i> {{ group.teacher_total }} teacher{{ '' if group.teacher_total == 1 else 's' }}
+                </span>
+                <span class="class-card-chevron" aria-hidden="true"><i class="fas fa-chevron-down"></i></span>
+            </span>
+        </summary>
+
+        <div class="class-subject-panel">
+            {% if group.subjects %}
+            <div class="class-subject-list">
+                {% for subject in group.subjects %}
+                <article class="class-subject-item class-subject-item--{{ subject.type|lower }}"
+                         data-subject-item
+                         data-search="{{ subject.subject_name|lower }} {{ subject.type|lower }} {{ (subject.description or '')|lower }}">
+                    <div class="class-subject-item-head">
+                        <div class="class-subject-name">
+                            <span class="class-subject-dot" aria-hidden="true"></span>
+                            <h4>{{ subject.subject_name }}</h4>
+                        </div>
+                        <span class="subject-type subject-type--{{ subject.type|lower }}">{{ subject.type }}</span>
+                    </div>
+                    <p>{{ subject.description or 'No description added for this subject.' }}</p>
+                    <div class="class-subject-item-foot">
+                        <span><i class="fas fa-user-tie" aria-hidden="true"></i> {{ subject.teacher_count }} teacher{{ '' if subject.teacher_count == 1 else 's' }} assigned</span>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            <div class="class-subject-panel-footer">
+                <button type="button" class="btn btn-outline btn-sm" onclick="openCreateSubject({{ group.grade.id }})">
+                    <i class="fas fa-plus"></i> Add subject to {{ group.grade.name }}
+                </button>
+            </div>
+            {% else %}
+            <div class="class-subject-empty">
+                <span class="class-subject-empty-icon" aria-hidden="true"><i class="fas fa-book-open"></i></span>
+                <p>No subjects have been added to {{ group.grade.name }} yet.</p>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openCreateSubject({{ group.grade.id }})">
+                    <i class="fas fa-plus"></i> Add the first subject
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </details>
+    {% endfor %}
 </div>
+<div class="empty-state subjects-empty" id="subjectsNoResults" hidden>
+    <i class="fas fa-search"></i>
+    <h3>No subjects found</h3>
+    <p>Try a different class name or subject.</p>
+</div>
+{% else %}
+<div class="empty-state subjects-empty">
+    <i class="fas fa-book"></i>
+    <h3>No classes yet</h3>
+    <p>Create a class first, then add subjects to it.</p>
+    <a href="{{ url_for('admin.grades_sections') }}" class="btn btn-outline-primary btn-sm">Manage Grades &amp; Sections</a>
+</div>
+{% endif %}
 
 <!-- Create Subject Modal -->
 <div class="modal-overlay" id="createSubjectModal">
@@ -59,15 +137,16 @@
             <button class="modal-close" onclick="hideModal('createSubjectModal')">&times;</button>
         </div>
         <form method="POST" action="{{ url_for('admin.create_subject') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="modal-body">
                 <div class="modal-form-grid">
                     <div class="form-group full-width">
-                        <label>Subject Name *</label>
-                        <input type="text" name="subject_name" class="form-control" required placeholder="e.g., Mathematics">
+                        <label for="subjectNameInput">Subject Name *</label>
+                        <input type="text" id="subjectNameInput" name="subject_name" class="form-control" required placeholder="e.g., Mathematics">
                     </div>
                     <div class="form-group">
-                        <label>Grade *</label>
-                        <select name="grade_id" class="form-control" required>
+                        <label for="subjectGradeSelect">Grade *</label>
+                        <select name="grade_id" id="subjectGradeSelect" class="form-control" required>
                             <option value="">Select Grade</option>
                             {% for grade in grades %}
                             <option value="{{ grade.id }}">{{ grade.name }}</option>
@@ -75,15 +154,15 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Type *</label>
-                        <select name="type" class="form-control" required>
+                        <label for="subjectTypeSelect">Type *</label>
+                        <select name="type" id="subjectTypeSelect" class="form-control" required>
                             <option value="Theory">Theory</option>
                             <option value="Practical">Practical</option>
                         </select>
                     </div>
                     <div class="form-group full-width">
-                        <label>Description</label>
-                        <textarea name="description" class="form-control" rows="3"></textarea>
+                        <label for="subjectDescriptionInput">Description</label>
+                        <textarea id="subjectDescriptionInput" name="description" class="form-control" rows="3" placeholder="Short description of what this subject covers"></textarea>
                     </div>
                 </div>
             </div>
@@ -94,4 +173,59 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setAllClassCards(open) {
+    document.querySelectorAll('[data-class-card]').forEach(function(card) {
+        if (!card.hidden) card.open = open;
+    });
+}
+
+function openCreateSubject(gradeId) {
+    var select = document.getElementById('subjectGradeSelect');
+    if (select) select.value = gradeId ? String(gradeId) : '';
+    showModal('createSubjectModal');
+    var nameInput = document.getElementById('subjectNameInput');
+    if (nameInput) {
+        window.setTimeout(function() { nameInput.focus(); }, 80);
+    }
+}
+
+function filterSubjectClasses() {
+    var input = document.getElementById('subjectSearch');
+    if (!input) return;
+    var query = input.value.trim().toLowerCase();
+    var anyVisible = false;
+
+    document.querySelectorAll('[data-class-card]').forEach(function(card) {
+        var classMatches = (card.dataset.className || '').toLowerCase().includes(query);
+        var matchingSubjects = 0;
+
+        card.querySelectorAll('[data-subject-item]').forEach(function(item) {
+            var isMatch = !query || classMatches || (item.dataset.search || '').includes(query);
+            item.hidden = !isMatch;
+            if (isMatch) matchingSubjects++;
+        });
+
+        var showCard = !query || classMatches || matchingSubjects > 0;
+        card.hidden = !showCard;
+        if (!showCard) {
+            card.open = false;
+        } else {
+            anyVisible = true;
+            if (query) card.open = true;
+        }
+    });
+
+    var noResults = document.getElementById('subjectsNoResults');
+    if (noResults) noResults.hidden = anyVisible;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var search = document.getElementById('subjectSearch');
+    if (search) search.addEventListener('input', filterSubjectClasses);
+});
+</script>
 {% endblock %}

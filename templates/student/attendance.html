@@ -11,46 +11,65 @@
 </div>
 
 <!-- Subject Cards -->
-<div class="card">
+<div class="card attendance-subjects">
     <div class="card-header">
         <h3><i class="fas fa-book"></i> Attendance by Subject</h3>
     </div>
     <div class="card-body">
         {% if subjects %}
-        <div class="subject-cards">
+        <div class="subject-cards attendance-subject-grid">
             {% for subject in subjects %}
-            <a href="{{ url_for('student.attendance', subject_id=subject.id) }}" class="subject-card {% if subject.id == selected_subject %}active{% endif %}">
-                <div class="subject-header" style="background: {{ subjectColor(subject.subject_name) }}">
-                    <h4>{{ subject.subject_name }}</h4>
-                    <span class="badge badge-light">{{ subject.type }}</span>
+            {% set pct = subject.percentage %}
+            {% set color_cls = 'asc-good' if pct >= 75 else 'asc-warn' if pct >= 60 else 'asc-low' %}
+            <a href="{{ url_for('student.attendance', subject_id=subject.id) }}"
+               class="attendance-subject-card {{ color_cls }} {% if subject.id == selected_subject %}active{% endif %}"
+               style="--asc-accent: {{ subjectColor(subject.subject_name) }}"
+               {% if subject.id == selected_subject %}aria-current="page"{% endif %}>
+
+                {# ── Subject name row ── #}
+                <div class="asc-header">
+                    <span class="asc-icon"><i class="fas fa-book-open"></i></span>
+                    <div class="asc-title">
+                        <h4>{{ subject.subject_name }}</h4>
+                        <span class="asc-type-badge">{{ subject.type }}</span>
+                    </div>
+                    <span class="asc-pct {% if pct >= 75 %}asc-pct--good{% elif pct >= 60 %}asc-pct--warn{% else %}asc-pct--low{% endif %}">
+                        {{ pct }}%
+                    </span>
                 </div>
-                <div class="subject-stats">
-                    <div class="stat-item">
-                        <span class="stat-value {% if subject.percentage >= 75 %}text-success{% elif subject.percentage >= 60 %}text-warning{% else %}text-danger{% endif %}">
-                            {{ subject.percentage }}%
-                        </span>
-                        <span class="stat-label">Attendance</span>
+
+                {# ── Progress bar ── #}
+                <div class="asc-bar-wrap">
+                    <div class="asc-bar-track" role="progressbar"
+                         aria-label="{{ subject.subject_name }} attendance"
+                         aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}">
+                        <div class="asc-bar-fill" style="width: {{ pct }}%"></div>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-value">{{ subject.stats.present or 0 }}</span>
-                        <span class="stat-label">Present</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value">{{ subject.stats.absent or 0 }}</span>
-                        <span class="stat-label">Absent</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value">{{ subject.stats.late or 0 }}</span>
-                        <span class="stat-label">Late</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value">{{ subject.stats.leave or 0 }}</span>
-                        <span class="stat-label">Leave</span>
-                    </div>
+                    <span class="asc-total-label">{{ subject.stats.total or 0 }} classes</span>
                 </div>
-                <div class="progress-bar">
-                    <div class="progress-fill {% if subject.percentage >= 75 %}bg-success{% elif subject.percentage >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
-                         style="width: {{ subject.percentage }}%"></div>
+
+                {# ── Stat chips ── #}
+                <div class="asc-chips">
+                    <span class="asc-chip asc-chip--present">
+                        <i class="fas fa-check-circle"></i>
+                        <strong>{{ subject.stats.present or 0 }}</strong>
+                        <span>Present</span>
+                    </span>
+                    <span class="asc-chip asc-chip--absent">
+                        <i class="fas fa-times-circle"></i>
+                        <strong>{{ subject.stats.absent or 0 }}</strong>
+                        <span>Absent</span>
+                    </span>
+                    <span class="asc-chip asc-chip--late">
+                        <i class="fas fa-clock"></i>
+                        <strong>{{ subject.stats.late or 0 }}</strong>
+                        <span>Late</span>
+                    </span>
+                    <span class="asc-chip asc-chip--leave">
+                        <i class="fas fa-calendar-minus"></i>
+                        <strong>{{ subject.stats.leave_count or subject.stats.leave or 0 }}</strong>
+                        <span>Leave</span>
+                    </span>
                 </div>
             </a>
             {% endfor %}
@@ -83,9 +102,11 @@
                 </thead>
                 <tbody>
                     {% for record in detailed_records %}
-                    <tr class="status-{{ record.status|lower }}">
+                    {% set record_status = record.status|default('Not recorded', true) %}
+                    {% set status_badge = 'success' if record_status == 'Present' else 'danger' if record_status == 'Absent' else 'warning' if record_status == 'Late' else 'secondary' %}
+                    <tr class="status-{{ record_status|lower|replace(' ', '-') }}">
                         <td>{{ record.date.strftime('%b %d, %Y') }}</td>
-                        <td><span class="badge badge-{{ record.status|lower }}">{{ record.status }}</span></td>
+                        <td><span class="badge badge-{{ status_badge }} attendance-record-status">{{ record_status }}</span></td>
                         <td>{{ record.marked_at.strftime('%b %d, %H:%M') }}</td>
                     </tr>
                     {% endfor %}

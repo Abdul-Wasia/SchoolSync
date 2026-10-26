@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ cert_type }} Certificate - {{ student.name }} ({{ student.student_system_id }})</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --accent: #b45309;
+            --text: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            color: var(--text);
+            background: #f1f5f9;
+            padding: 2rem 1rem;
+        }
+
+        .cert-container {
+            max-width: 820px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 3rem 3.5rem;
+            border: 12px double #1e3a8a;
+            position: relative;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+        }
+
+        .cert-container::after {
+            content: "";
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            right: 6px;
+            bottom: 6px;
+            border: 2px solid #b45309;
+            pointer-events: none;
+        }
+
+        .cert-header {
+            text-align: center;
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 1.25rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .cert-crest {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 0.75rem;
+            border-radius: 50%;
+            background: #1e3a8a;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            box-shadow: 0 4px 10px rgba(30, 58, 138, 0.3);
+        }
+
+        .school-title {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            font-family: Georgia, serif;
+        }
+
+        .school-sub {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .cert-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .cert-title-box {
+            text-align: center;
+            margin: 1.75rem 0 2rem;
+        }
+
+        .cert-title {
+            display: inline-block;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 2px solid #b45309;
+            padding-bottom: 6px;
+            font-family: Georgia, serif;
+        }
+
+        .cert-salutation {
+            font-size: 1.15rem;
+            font-weight: 700;
+            font-style: italic;
+            margin-bottom: 1.25rem;
+            color: #0f172a;
+        }
+
+        .cert-body {
+            font-size: 1.12rem;
+            line-height: 2.1;
+            text-align: justify;
+            color: #1e293b;
+            margin-bottom: 2.5rem;
+        }
+
+        .highlight {
+            font-weight: 700;
+            color: #0f172a;
+            border-bottom: 1px dotted #64748b;
+            padding: 0 4px;
+        }
+
+        .cert-footer {
+            display: grid;
+            grid-template-columns: 1fr 140px 1fr;
+            gap: 1.5rem;
+            align-items: flex-end;
+            margin-top: 3.5rem;
+            padding-top: 1.5rem;
+        }
+
+        .sign-block {
+            text-align: center;
+        }
+
+        .sign-line {
+            border-top: 1.5px solid #0f172a;
+            padding-top: 6px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .sign-title {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .official-seal {
+            width: 120px;
+            height: 120px;
+            border: 3px dashed #b45309;
+            border-radius: 50%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #b45309;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            transform: rotate(-10deg);
+        }
+
+        .no-print-bar {
+            max-width: 820px;
+            margin: 0 auto 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-family: system-ui, sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .no-print-bar {
+                display: none !important;
+            }
+            .cert-container {
+                box-shadow: none;
+                max-width: 100%;
+                border-width: 8px;
+                padding: 2.5rem;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="no-print-bar">
+    <a href="javascript:history.back()" class="btn btn-outline">
+        <i class="fas fa-arrow-left"></i> Back to Documents
+    </a>
+    <div style="display: flex; gap: 8px;">
+        <button onclick="window.print()" class="btn">
+            <i class="fas fa-print"></i> Print Official Certificate
+        </button>
+    </div>
+</div>
+
+<div class="cert-container">
+    <div class="cert-header">
+        <div class="cert-crest">
+            <i class="fas fa-graduation-cap"></i>
+        </div>
+        <h1 class="school-title">SchoolSync Academy</h1>
+        <div class="school-sub">Recognized &amp; Registered Secondary Academic Institution</div>
+        <div style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">Office of the Registrar &amp; Examination Directorate</div>
+    </div>
+
+    <div class="cert-meta">
+        <div>Ref. No: <span style="font-family: monospace; color: #1e3a8a;">{{ cert_number }}</span></div>
+        <div>Date of Issue: <span>{{ issued_date.strftime('%B %d, %Y') if issued_date else 'Current' }}</span></div>
+    </div>
+
+    <div class="cert-title-box">
+        {% if cert_type == 'Character' %}
+        <h2 class="cert-title">Character &amp; Conduct Certificate</h2>
+        {% elif cert_type in ['Transfer', 'Leaving'] %}
+        <h2 class="cert-title">School Leaving &amp; Transfer Certificate</h2>
+        {% else %}
+        <h2 class="cert-title">Bonafide Enrollment Certificate</h2>
+        {% endif %}
+    </div>
+
+    <div class="cert-salutation">TO WHOM IT MAY CONCERN</div>
+
+    <div class="cert-body">
+        {% if cert_type == 'Character' %}
+        This is to certify that <span class="highlight">{{ student.name }}</span>,
+        son/daughter of <span class="highlight">{{ student.father_name or 'N/A' }}</span>,
+        bearing Student Registration ID <span class="highlight">{{ student.student_system_id }}</span>
+        and Roll Number <span class="highlight">{{ student.roll_number or 'N/A' }}</span>,
+        is a bonafide student of this institution currently enrolled in
+        <span class="highlight">{{ student.grade_name or 'N/A' }}{% if student.section_name %} (Section {{ student.section_name }}){% endif %}</span>.
+        During their academic tenure at SchoolSync Academy, their conduct, character, and institutional discipline
+        have been found to be <span class="highlight">EXCELLENT</span>.
+        They have maintained an overall attendance standing of <span class="highlight">{{ attendance_pct }}%</span>
+        and have actively participated in curricular and co-curricular programs. We wish them all the best in their future endeavors.
+        
+        {% elif cert_type in ['Transfer', 'Leaving'] %}
+        This is to certify that <span class="highlight">{{ student.name }}</span>,
+        son/daughter of <span class="highlight">{{ student.father_name or 'N/A' }}</span>,
+        bearing Student Registration ID <span class="highlight">{{ student.student_system_id }}</span>
+        and Roll Number <span class="highlight">{{ student.roll_number or 'N/A' }}</span>,
+        was admitted to this institution on <span class="highlight">{{ student.admission_date.strftime('%B %d, %Y') if student.admission_date else 'Regular Admission' }}</span>.
+        They have been studying in <span class="highlight">{{ student.grade_name or 'N/A' }} - Section {{ student.section_name or 'A' }}</span>.
+        All institutional dues and fee charges have been cleared up to the date of leaving.
+        Their general conduct and moral character during the period of stay was <span class="highlight">SATISFACTORY &amp; COMMENDABLE</span>.
+        This School Leaving Certificate is issued on guardian request for the purpose of <span class="highlight">{{ reason }}</span>.
+
+        {% else %}
+        This is to certify that <span class="highlight">{{ student.name }}</span>,
+        son/daughter of <span class="highlight">{{ student.father_name or 'N/A' }}</span>,
+        bearing Student Registration ID <span class="highlight">{{ student.student_system_id }}</span>
+        and Roll Number <span class="highlight">{{ student.roll_number or 'N/A' }}</span>,
+        is a regular and bonafide student of <span class="highlight">SchoolSync Academy</span>,
+        currently enrolled in <span class="highlight">{{ student.grade_name or 'N/A' }}{% if student.section_name %} - Section {{ student.section_name }}{% endif %}</span>
+        for the current academic session.
+        As per official school records, their date of birth is <span class="highlight">{{ student.dob.strftime('%B %d, %Y') if student.dob else 'Recorded' }}</span>.
+        Their cumulative attendance record stands at <span class="highlight">{{ attendance_pct }}%</span>.
+        This certificate is issued upon student/parent request for <span class="highlight">{{ reason }}</span>.
+        {% endif %}
+    </div>
+
+    <div class="cert-footer">
+        <div class="sign-block">
+            <div class="sign-line">Registrar / GR Officer</div>
+            <div class="sign-title">General Register Directorate</div>
+        </div>
+
+        <div class="official-seal">
+            <i class="fas fa-certificate" style="font-size: 1.4rem; margin-bottom: 4px;"></i>
+            <span>OFFICIAL SEAL</span>
+            <span>SCHOOLSYNC</span>
+        </div>
+
+        <div class="sign-block">
+            <div class="sign-line">Principal / Head of Institution</div>
+            <div class="sign-title">SchoolSync Academy</div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
