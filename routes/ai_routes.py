@@ -1,28 +1,50 @@
+"""AI Assistant routes for SchoolSync.
+
+Features:
+- Course materials Q&A
+- Topic summarizer
+- Quiz generator with safe validation
+- Study planner
+- Protected configuration status
+- Role-based report and announcement drafting
+"""
+
+from functools import wraps
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from database.connection import query
-from functools import wraps
 from routes.ai_helper import call_ai, call_ai_json, extract_material_text
 from routes.auth_routes import login_required
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
 
-def login_required_ai(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'success': False, 'error': 'Not logged in'}), 401
-        return f(*args, **kwargs)
-    return wrapper
+def login_required_ai(allowed_roles=None):
+    """Decorator to require login and optional role verification for AI endpoints."""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if 'user_id' not in session:
+                return jsonify({'success': False, 'error': 'Authentication required. Please log in.'}), 401
+            if allowed_roles and session.get('user_type') not in allowed_roles:
+                return jsonify({'success': False, 'error': 'You do not have permission to access this AI feature.'}), 403
+            return f(*args, **kwargs)
+        return wrapper
+
+    if callable(allowed_roles):
+        func = allowed_roles
+        allowed_roles = None
+        return decorator(func)
+    return decorator
 
 
 @ai_bp.route('/summarizer')
+@login_required(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def summarizer_page():
     return redirect(url_for('ai.chat_page'))
 
 
 @ai_bp.route('/summarize', methods=['POST'])
-@login_required_ai
+@login_required_ai(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def summarize():
     data = request.get_json(silent=True) or {}
     topic = (data.get('topic') or '').strip()
@@ -30,7 +52,10 @@ def summarize():
     level = (data.get('level') or 'Grade 8').strip()
 
     if not topic:
-        return jsonify({'success': False, 'error': 'Please enter a topic'}), 400
+        return jsonify({'success': False, 'error': 'Please enter a topic to summarize.'}), 400
+
+    if len(topic) > 5000:
+        topic = topic[:5000]
 
     prompt = f"""You are a helpful school teacher.
 Summarize the topic \"{topic}\" for {level} students studying {subject}.
@@ -52,27 +77,44 @@ Keep the language simple, clear, and educational."""
 
     result = call_ai(prompt, max_tokens=800)
     return jsonify({
-        'success': result['success'],
-        'summary': result['text'],
+        'success': result.get('success', False),
+        'summary': result.get('text', ''),
         'provider': result.get('provider', 'Unknown')
     })
 
 
 @ai_bp.route('/quiz')
+@login_required(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def quiz_page():
     return redirect(url_for('ai.chat_page'))
 
 
 @ai_bp.route('/generate-quiz', methods=['POST'])
-@login_required_ai
+@login_required_ai(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def generate_quiz():
     data = request.get_json(silent=True) or {}
     topic = (data.get('topic') or '').strip()
     subject = (data.get('subject') or 'General').strip()
-    num_q = int(data.get('num_questions', 5) or 5)
+
+    # Safe question count parsing and boundary clamping
+    raw_num = data.get('num_questions')
+    try:
+        num_q = int(raw_num) if raw_num is not None else 5
+    except (TypeError, ValueError):
+        num_q = 5
+
+    if num_q < 1:
+        num_q = 1
+    elif num_q > 20:
+        num_q = 20
 
     if not topic:
-        return jsonify({'success': False, 'error': 'Please enter a topic'}), 400
+        return jsonify({'success': False, 'error': 'Please enter a topic for the quiz.'}), 400
+
+    if len(topic) > 500:
+        topic = topic[:500]
+    if len(subject) > 100:
+        subject = subject[:100]
 
     prompt = f"""Generate {num_q} multiple choice questions about \"{topic}\" for {subject} students.
 
@@ -89,17 +131,17 @@ Return ONLY this JSON format, nothing else:
 }}"""
 
     result = call_ai_json(prompt, max_tokens=1500)
-    if result and 'questions' in result:
+    if result and isinstance(result, dict) and 'questions' in result:
         return jsonify({'success': True, 'questions': result['questions']})
 
-    plain = call_ai(prompt, max_tokens=1500)
-    return jsonify({'success': False, 'error': 'Could not generate quiz. Try a different topic.'})
+    return jsonify({'success': False, 'error': 'Could not generate quiz. Try a different topic or prompt.'})
 
 
 @ai_bp.route('/chat')
-@login_required(['Student', 'Teacher'])
+@login_required(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def chat_page():
-    if session.get('user_type') == 'Student':
+    user_type = session.get('user_type')
+    if user_type == 'Student':
         student = query(
             "SELECT section_id FROM students WHERE user_id = %s",
             (session['user_id'],), fetch_one=True
@@ -120,7 +162,7 @@ def chat_page():
                ORDER BY cm.uploaded_at DESC, cm.id DESC LIMIT 100""",
             (section_id,), fetch=True
         ) if section_id else []
-    else:
+    elif user_type == 'Teacher':
         teacher = query(
             "SELECT id FROM teachers WHERE user_id = %s",
             (session['user_id'],), fetch_one=True
@@ -143,6 +185,16 @@ def chat_page():
                ORDER BY cm.uploaded_at DESC, cm.id DESC LIMIT 100""",
             (teacher_id,), fetch=True
         ) if teacher_id else []
+    else:
+        # Principal, FA, IT_Admin view all subjects and materials
+        subjects = query("SELECT id, subject_name FROM subjects ORDER BY subject_name LIMIT 50", fetch=True) or []
+        ai_materials = query(
+            """SELECT cm.id, cm.title, cm.material_type, cm.uploaded_at, s.subject_name
+               FROM course_materials cm
+               JOIN subjects s ON s.id = cm.subject_id
+               ORDER BY cm.uploaded_at DESC LIMIT 50""",
+            fetch=True
+        ) or []
 
     return render_template(
         'ai/chat.html', subjects=subjects or [], ai_materials=ai_materials or []
@@ -150,7 +202,7 @@ def chat_page():
 
 
 @ai_bp.route('/chat/send', methods=['POST'])
-@login_required_ai
+@login_required_ai(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def chat_send():
     data = request.get_json(silent=True) or {}
     message = (data.get('message') or '').strip()
@@ -161,8 +213,8 @@ def chat_send():
     if not message:
         return jsonify({'success': False, 'error': 'Empty message'}), 400
 
-    if user_type not in ('Student', 'Teacher'):
-        return jsonify({'success': False, 'reply': 'AI Assistant is available to students and teachers only.'}), 403
+    if len(message) > 4000:
+        message = message[:4000]
 
     material_context = ''
     material_id = data.get('material_id')
@@ -184,7 +236,7 @@ def chat_send():
                      )""",
                 (material_id, session['user_id']), fetch_one=True
             )
-        else:
+        elif user_type == 'Teacher':
             material = query(
                 """SELECT cm.*, s.subject_name, t.name as teacher_name
                    FROM course_materials cm
@@ -198,6 +250,15 @@ def chat_send():
                          AND st.section_id = cm.section_id
                    )""",
                 (material_id, session['user_id']), fetch_one=True
+            )
+        else:
+            material = query(
+                """SELECT cm.*, s.subject_name, t.name as teacher_name
+                   FROM course_materials cm
+                   JOIN subjects s ON s.id = cm.subject_id
+                   JOIN teachers t ON t.id = cm.teacher_id
+                   WHERE cm.id = %s""",
+                (material_id,), fetch_one=True
             )
 
         if not material:
@@ -223,10 +284,10 @@ def chat_send():
     context = '\n'.join(
         f"{'User' if item.get('role') == 'user' else 'AI Assistant'}: {item.get('content', '')}"
         for item in history[-8:]
-        if item.get('role') in ('user', 'assistant')
+        if isinstance(item, dict) and item.get('role') in ('user', 'assistant')
     )
 
-    prompt = f"""You are the single AI Assistant for SchoolSync, helping a {user_type.lower()}.
+    prompt = f"""You are the AI Assistant for SchoolSync, helping a {user_type.lower()}.
 The selected subject is {subject}.
 
 You can explain concepts, answer questions, summarize topics or provided text,
@@ -257,31 +318,41 @@ to education or school work."""
 
     result = call_ai(prompt, max_tokens=900)
     return jsonify({
-        'success': result['success'],
-        'reply': result['text'],
+        'success': result.get('success', False),
+        'reply': result.get('text', ''),
         'provider': result.get('provider', '')
     })
 
 
 @ai_bp.route('/study-planner')
+@login_required(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def study_planner_page():
     return redirect(url_for('ai.chat_page'))
 
 
 @ai_bp.route('/generate-plan', methods=['POST'])
-@login_required_ai
+@login_required_ai(['Student', 'Teacher', 'Principal', 'FA', 'IT_Admin'])
 def generate_plan():
     data = request.get_json(silent=True) or {}
     exam_date = (data.get('exam_date') or '').strip()
     subjects = data.get('subjects') or []
-    hours = data.get('hours_per_day', 2)
+    raw_hours = data.get('hours_per_day', 2)
+
+    try:
+        hours = float(raw_hours)
+        if hours < 0.5:
+            hours = 1.0
+        elif hours > 14.0:
+            hours = 14.0
+    except (TypeError, ValueError):
+        hours = 2.0
 
     if not exam_date or not subjects:
-        return jsonify({'success': False, 'error': 'Please fill all fields'}), 400
+        return jsonify({'success': False, 'error': 'Please provide both an exam date and subjects.'}), 400
 
     from datetime import date
     today = date.today().strftime('%Y-%m-%d')
-    subj_str = ', '.join(subjects)
+    subj_str = ', '.join(str(s) for s in subjects[:10])
 
     prompt = f"""Create a daily study plan for a school student.
 
@@ -298,63 +369,50 @@ Keep it practical and achievable for a school student."""
 
     result = call_ai(prompt, max_tokens=1000)
     return jsonify({
-        'success': result['success'],
-        'plan': result['text'],
+        'success': result.get('success', False),
+        'plan': result.get('text', ''),
         'provider': result.get('provider', '')
     })
 
 
 @ai_bp.route('/status')
+@login_required_ai
 def ai_status():
-    """Check which AI APIs are working"""
-    statuses = []
+    """Safely check which AI providers are configured without burning credits or leaking keys."""
+    from config import Config
+    providers = [
+        {
+            'name': 'Groq',
+            'configured': bool(Config.GROQ_API_KEY and Config.GROQ_API_KEY.strip()),
+            'model': Config.GROQ_MODEL
+        },
+        {
+            'name': 'Gemini',
+            'configured': bool(Config.GEMINI_API_KEY and Config.GEMINI_API_KEY.strip()),
+            'model': Config.GEMINI_MODEL
+        },
+        {
+            'name': 'OpenRouter',
+            'configured': bool(Config.OPENROUTER_API_KEY and Config.OPENROUTER_API_KEY.strip()),
+            'model': Config.OPENROUTER_MODEL
+        },
+        {
+            'name': 'Claude',
+            'configured': bool(Config.CLAUDE_API_KEY and Config.CLAUDE_API_KEY.strip()),
+            'model': Config.CLAUDE_MODEL
+        }
+    ]
 
-    try:
-        from config import Config
-        import requests as req
-        r = req.post(
-            Config.GROQ_API_URL,
-            headers={'Authorization': f'Bearer {Config.GROQ_API_KEY}', 'Content-Type': 'application/json'},
-            json={'model': Config.GROQ_MODEL, 'messages': [{'role': 'user', 'content': 'Say OK'}], 'max_tokens': 5},
-            timeout=8
-        )
-        statuses.append({'name': 'Groq', 'status': 'online' if r.status_code == 200 else 'error', 'code': r.status_code})
-    except Exception:
-        statuses.append({'name': 'Groq', 'status': 'offline', 'code': 0})
-
-    try:
-        import requests as req
-        r = req.post(
-            f"{Config.GEMINI_API_URL}?key={Config.GEMINI_API_KEY}",
-            headers={'Content-Type': 'application/json'},
-            json={'contents': [{'parts': [{'text': 'Say OK'}]}], 'generationConfig': {'maxOutputTokens': 5}},
-            timeout=8
-        )
-        statuses.append({'name': 'Gemini', 'status': 'online' if r.status_code == 200 else 'error', 'code': r.status_code})
-    except Exception:
-        statuses.append({'name': 'Gemini', 'status': 'offline', 'code': 0})
-
-    try:
-        import requests as req
-        r = req.post(
-            Config.OPENROUTER_API_URL,
-            headers={
-                'Authorization': f'Bearer {Config.OPENROUTER_API_KEY}',
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://schoolsync.app',
-                'X-Title': 'SchoolSync'
-            },
-            json={'model': Config.OPENROUTER_MODEL, 'messages': [{'role': 'user', 'content': 'Say OK'}], 'max_tokens': 5},
-            timeout=8
-        )
-        statuses.append({'name': 'OpenRouter', 'status': 'online' if r.status_code == 200 else 'error', 'code': r.status_code})
-    except Exception:
-        statuses.append({'name': 'OpenRouter', 'status': 'offline', 'code': 0})
-
-    return jsonify({'apis': statuses})
+    has_active = any(p['configured'] for p in providers)
+    return jsonify({
+        'success': True,
+        'ready': has_active,
+        'providers': providers
+    })
 
 
 @ai_bp.route('/generate-report', methods=['POST'])
+@login_required_ai(['Principal', 'FA', 'IT_Admin'])
 def generate_report():
     data = request.get_json(silent=True) or {}
     report_data = data.get('report_data') or {
@@ -371,12 +429,13 @@ def generate_report():
         "Teacher Performance, Recommendations. Use professional language."
     )
     result = call_ai(prompt, max_tokens=1200)
-    if not result['success']:
+    if not result.get('success'):
         return jsonify({'success': False, 'message': 'AI failed while generating the report.'}), 500
-    return jsonify({'success': True, 'report': result['text']})
+    return jsonify({'success': True, 'report': result.get('text', '')})
 
 
 @ai_bp.route('/write-announcement', methods=['POST'])
+@login_required_ai(['Principal', 'FA', 'IT_Admin', 'Teacher'])
 def write_announcement():
     payload = request.get_json(silent=True) or {}
     topic = (payload.get('topic') or '').strip()
@@ -384,11 +443,14 @@ def write_announcement():
     if not topic:
         return jsonify({'success': False, 'message': 'Topic is required.'}), 400
 
+    if len(topic) > 500:
+        topic = topic[:500]
+
     prompt = (
         f"Write a formal school announcement about {topic} for {target}. "
         "Include date placeholder, venue, and important instructions. Keep it professional."
     )
     result = call_ai(prompt, max_tokens=800)
-    if not result['success']:
+    if not result.get('success'):
         return jsonify({'success': False, 'message': 'AI failed while generating the announcement.'}), 500
-    return jsonify({'success': True, 'announcement': result['text']})
+    return jsonify({'success': True, 'announcement': result.get('text', '')})

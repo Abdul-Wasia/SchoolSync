@@ -10,7 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 def extract_material_text(file_path, max_chars=16000):
-    """Extract readable text from supported course-material uploads only."""
+    """Extract readable text from supported course-material uploads only.
+    
+    Prevents path traversal, enforces storage boundaries, and limits text
+    extraction length to avoid memory exhaustion.
+    """
     if not file_path:
         return ''
 
@@ -89,8 +93,8 @@ def extract_material_text(file_path, max_chars=16000):
 
 def call_ai(prompt, max_tokens=1024):
     """
-    Tries configured AI APIs in order. If one fails, tries the next.
-    Returns the AI response text or an error message.
+    Tries configured AI APIs in fallback order: Groq -> Gemini -> OpenRouter -> Claude.
+    Ensures safe error handling, avoids exposing API credentials, and prevents crashes.
     """
     configured_keys = [
         Config.GROQ_API_KEY,
@@ -98,17 +102,17 @@ def call_ai(prompt, max_tokens=1024):
         Config.OPENROUTER_API_KEY,
         Config.CLAUDE_API_KEY,
     ]
-    if not any(configured_keys):
+    if not any(k and str(k).strip() for k in configured_keys):
         return {
             'success': False,
-            'text': 'AI is not configured. Set GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, or CLAUDE_API_KEY in your local .env file, then restart SchoolSync.',
+            'text': 'AI Assistant is not configured. Set GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, or CLAUDE_API_KEY in your local .env file, then restart SchoolSync.',
             'provider': 'None'
         }
 
     failures = []
 
-    # Try 1: Groq (fastest)
-    if Config.GROQ_API_KEY:
+    # 1. Try Groq
+    if Config.GROQ_API_KEY and str(Config.GROQ_API_KEY).strip():
         try:
             resp = requests.post(
                 Config.GROQ_API_URL,
@@ -126,17 +130,21 @@ def call_ai(prompt, max_tokens=1024):
             )
             if resp.status_code == 200:
                 data = resp.json()
-                text = data['choices'][0]['message']['content']
-                if text and text.strip():
-                    print('[AI] Used: Groq')
-                    return {'success': True, 'text': text, 'provider': 'Groq'}
-            failures.append(f'Groq returned HTTP {resp.status_code}')
-        except Exception:
+                choices = data.get('choices', [])
+                if choices:
+                    text = choices[0].get('message', {}).get('content', '')
+                    if text and text.strip():
+                        logger.info('AI call succeeded via Groq')
+                        return {'success': True, 'text': text.strip(), 'provider': 'Groq'}
+            failures.append(f'Groq HTTP {resp.status_code}')
+        except Exception as exc:
+            logger.warning('Groq request failed: %s', type(exc).__name__)
             failures.append('Groq request failed')
 
-    # Try 2: Google Gemini
-    if Config.GEMINI_API_KEY:
+    # 2. Try Google Gemini
+    if Config.GEMINI_API_KEY and str(Config.GEMINI_API_KEY).strip():
         try:
+            # Mask API key in any error reporting
             resp = requests.post(
                 f"{Config.GEMINI_API_URL}?key={Config.GEMINI_API_KEY}",
                 headers={'Content-Type': 'application/json'},
@@ -148,16 +156,21 @@ def call_ai(prompt, max_tokens=1024):
             )
             if resp.status_code == 200:
                 data = resp.json()
-                text = data['candidates'][0]['content']['parts'][0]['text']
-                if text and text.strip():
-                    print('[AI] Used: Gemini')
-                    return {'success': True, 'text': text, 'provider': 'Gemini'}
-            failures.append(f'Gemini returned HTTP {resp.status_code}')
-        except Exception:
+                candidates = data.get('candidates', [])
+                if candidates:
+                    parts = candidates[0].get('content', {}).get('parts', [])
+                    if parts and 'text' in parts[0]:
+                        text = parts[0]['text']
+                        if text and text.strip():
+                            logger.info('AI call succeeded via Gemini')
+                            return {'success': True, 'text': text.strip(), 'provider': 'Gemini'}
+            failures.append(f'Gemini HTTP {resp.status_code}')
+        except Exception as exc:
+            logger.warning('Gemini request failed: %s', type(exc).__name__)
             failures.append('Gemini request failed')
 
-    # Try 3: OpenRouter (backup)
-    if Config.OPENROUTER_API_KEY:
+    # 3. Try OpenRouter
+    if Config.OPENROUTER_API_KEY and str(Config.OPENROUTER_API_KEY).strip():
         try:
             resp = requests.post(
                 Config.OPENROUTER_API_URL,
@@ -176,15 +189,19 @@ def call_ai(prompt, max_tokens=1024):
             )
             if resp.status_code == 200:
                 data = resp.json()
-                text = data['choices'][0]['message']['content']
-                if text and text.strip():
-                    print('[AI] Used: OpenRouter')
-                    return {'success': True, 'text': text, 'provider': 'OpenRouter'}
-            failures.append(f'OpenRouter returned HTTP {resp.status_code}')
-        except Exception:
+                choices = data.get('choices', [])
+                if choices:
+                    text = choices[0].get('message', {}).get('content', '')
+                    if text and text.strip():
+                        logger.info('AI call succeeded via OpenRouter')
+                        return {'success': True, 'text': text.strip(), 'provider': 'OpenRouter'}
+            failures.append(f'OpenRouter HTTP {resp.status_code}')
+        except Exception as exc:
+            logger.warning('OpenRouter request failed: %s', type(exc).__name__)
             failures.append('OpenRouter request failed')
 
-    if Config.CLAUDE_API_KEY:
+    # 4. Try Anthropic Claude
+    if Config.CLAUDE_API_KEY and str(Config.CLAUDE_API_KEY).strip():
         try:
             resp = requests.post(
                 Config.CLAUDE_API_URL,
@@ -202,35 +219,62 @@ def call_ai(prompt, max_tokens=1024):
             )
             if resp.status_code == 200:
                 data = resp.json()
-                text = data['content'][0].get('text', '')
-                if text and text.strip():
-                    print('[AI] Used: Claude')
-                    return {'success': True, 'text': text, 'provider': 'Claude'}
-            failures.append(f'Claude returned HTTP {resp.status_code}')
-        except Exception:
+                content = data.get('content', [])
+                if content and isinstance(content, list):
+                    text = content[0].get('text', '')
+                    if text and text.strip():
+                        logger.info('AI call succeeded via Claude')
+                        return {'success': True, 'text': text.strip(), 'provider': 'Claude'}
+            failures.append(f'Claude HTTP {resp.status_code}')
+        except Exception as exc:
+            logger.warning('Claude request failed: %s', type(exc).__name__)
             failures.append('Claude request failed')
 
     return {
         'success': False,
-        'text': 'Configured AI providers are unavailable. Check the API key, model access, quota, and internet connection.',
-        'provider': ', '.join(failures) or 'Unavailable'
+        'text': 'The AI Assistant is temporarily unavailable. Please check your network connection and verify API credentials in your .env configuration.',
+        'provider': 'Unavailable'
     }
 
 
 def call_ai_json(prompt, max_tokens=1024):
     """
-    Same as call_ai but tries to parse JSON from response.
-    Returns parsed dict or None.
+    Calls AI provider requesting strict JSON format and safely parses the JSON response.
+    Returns parsed dict/list or None without raising unhandled exceptions.
     """
-    result = call_ai(prompt + '\n\nIMPORTANT: Return ONLY valid JSON. No markdown, no explanation, just JSON.', max_tokens)
-    if not result['success']:
+    result = call_ai(
+        prompt + '\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown fences, comments, or introductory text.',
+        max_tokens=max_tokens
+    )
+    if not result or not result.get('success'):
         return None
+
+    raw_text = (result.get('text') or '').strip()
+    if not raw_text:
+        return None
+
+    # Handle markdown code blocks if the model wrapped output
+    if '```' in raw_text:
+        parts = raw_text.split('```')
+        for block in parts[1:]:
+            cleaned_block = block.strip()
+            if cleaned_block.startswith('json'):
+                cleaned_block = cleaned_block[4:].strip()
+            try:
+                return json.loads(cleaned_block)
+            except Exception:
+                continue
+
+    # Attempt direct JSON parse
     try:
-        text = result['text'].strip()
-        if text.startswith('```'):
-            text = text.split('```')[1]
-            if text.startswith('json'):
-                text = text[4:]
-        return json.loads(text.strip())
+        return json.loads(raw_text)
     except Exception:
+        # Extract potential JSON block between curly braces
+        start_idx = raw_text.find('{')
+        end_idx = raw_text.rfind('}')
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            try:
+                return json.loads(raw_text[start_idx:end_idx + 1])
+            except Exception:
+                pass
         return None

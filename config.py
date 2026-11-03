@@ -1,7 +1,10 @@
 import os
+from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / '.env')
 load_dotenv()
 
 
@@ -39,13 +42,13 @@ class Config:
     SESSION_COOKIE_SECURE = not DEBUG
     SESSION_COOKIE_SAMESITE = 'Lax'
 
-    # AI API keys
+    # AI API keys & Valid Model Identifiers
     GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
-    GROQ_MODEL = 'llama3-70b-8192'
+    GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
     GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.8-flash')
+    GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
     GEMINI_API_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
 
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
@@ -54,4 +57,4 @@ class Config:
 
     CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', '')
     CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
-    CLAUDE_MODEL = 'claude-sonnet-4-6'
+    CLAUDE_MODEL = os.getenv('CLAUDE_MODEL', 'claude-3-5-sonnet-20241022')
