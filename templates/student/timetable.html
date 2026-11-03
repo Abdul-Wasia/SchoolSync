@@ -4,17 +4,27 @@
 
 {% block extra_css %}
 <style>
-@media print {
-    .sidebar, .navbar, .header-actions,
-    .sidebar-toggle-btn, .btn { display: none !important; }
-    .main-container { margin-left: 0 !important; }
-    .main-content { padding: 0 !important; }
-    body { background: white !important; }
-    .timetable-slot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .timetable-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .print-title { display: block !important; }
+/* Extra spacing so the PDF capture has breathing room */
+#timetable-export-area {
+    background: #fff;
+    padding: 16px;
+    border-radius: 0;
 }
-.print-title { display: none; }
+#timetable-export-area .export-header {
+    text-align: center;
+    margin-bottom: 14px;
+    font-family: inherit;
+}
+#timetable-export-area .export-header h2 {
+    margin: 0 0 4px;
+    font-size: 1.25rem;
+    color: #1e293b;
+}
+#timetable-export-area .export-header p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #64748b;
+}
 </style>
 {% endblock %}
 
@@ -25,62 +35,132 @@
         <p class="page-subtitle">{{ student.grade_name }} - {{ student.section_name }}</p>
     </div>
     <div class="header-actions">
-        <button type="button" class="btn btn-outline" onclick="window.print()">
-            <i class="fas fa-print"></i> Print Timetable
+        <button type="button" class="btn btn-primary" id="downloadPdfBtn" onclick="downloadTimetablePDF()">
+            <i class="fas fa-file-pdf"></i> Download PDF
         </button>
     </div>
 </div>
 
-<!-- School name shown only when printing -->
-<div class="print-title" style="text-align:center; margin-bottom:12px;">
-    <strong>SchoolSync &mdash; Weekly Timetable</strong><br>
-    <span>{{ student.grade_name }} &ndash; {{ student.section_name }}</span>
-</div>
-
-<div class="card">
-    <div class="card-header">
-        <h3><i class="fas fa-calendar-alt"></i> Weekly Schedule</h3>
+<!-- Wrapper captured by html2canvas -->
+<div id="timetable-export-area">
+    <!-- Title shown inside the PDF -->
+    <div class="export-header">
+        <h2>SchoolSync &mdash; Weekly Timetable</h2>
+        <p>{{ student.grade_name }} &ndash; {{ student.section_name }}</p>
     </div>
-    <div class="card-body">
-        {% if timetable and timetable|length > 0 %}
-        <div class="timetable-grid">
-            <!-- Header Row -->
-            <div class="timetable-cell header">Period / Day</div>
-            {% for day in days %}
-            <div class="timetable-cell header">{{ day }}</div>
-            {% endfor %}
 
-            <!-- Period Rows -->
-            {% for period in range(1, 9) %}
-            <div class="timetable-cell period-header">Period {{ period }}</div>
-            {% for day in days %}
-            <div class="timetable-cell">
-                {% set slots = [] %}
-                {% if timetable is mapping %}
-                    {% set slots = timetable.get(day, []) | selectattr('period', 'equalto', period) | list %}
-                {% endif %}
-                {% if slots %}
-                    {% for slot in slots %}
-                    <div class="timetable-slot" style="background: {{ subjectColor(slot.subject_name) }}">
-                        <strong>{{ slot.subject_name }}</strong>
-                        <small>{{ slot.teacher_name }}</small>
-                        <small>{{ slot.start_time|format_time }} - {{ slot.end_time|format_time }}</small>
-                        <small>{{ slot.room_type }}</small>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="timetable-empty">Free Period</div>
-                {% endif %}
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-calendar-alt"></i> Weekly Schedule</h3>
+        </div>
+        <div class="card-body">
+            {% if timetable and timetable|length > 0 %}
+            <div class="timetable-grid">
+                <!-- Header Row -->
+                <div class="timetable-cell header">Period / Day</div>
+                {% for day in days %}
+                <div class="timetable-cell header">{{ day }}</div>
+                {% endfor %}
+
+                <!-- Period Rows -->
+                {% for period in range(1, 9) %}
+                <div class="timetable-cell period-header">Period {{ period }}</div>
+                {% for day in days %}
+                <div class="timetable-cell">
+                    {% set slots = [] %}
+                    {% if timetable is mapping %}
+                        {% set slots = timetable.get(day, []) | selectattr('period', 'equalto', period) | list %}
+                    {% endif %}
+                    {% if slots %}
+                        {% for slot in slots %}
+                        <div class="timetable-slot" style="background: {{ subjectColor(slot.subject_name) }}">
+                            <strong>{{ slot.subject_name }}</strong>
+                            <small>{{ slot.teacher_name }}</small>
+                            <small>{{ slot.start_time|format_time }} - {{ slot.end_time|format_time }}</small>
+                            <small>{{ slot.room_type }}</small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="timetable-empty">Free Period</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% endfor %}
             </div>
-            {% endfor %}
-            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-alt"></i>
+                <p>No timetable scheduled yet</p>
+            </div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="empty-state">
-            <i class="fas fa-calendar-alt"></i>
-            <p>No timetable scheduled yet</p>
-        </div>
-        {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- html2canvas + jsPDF (loaded from CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+        integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+        integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfYWhBAScAjjRNQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+async function downloadTimetablePDF() {
+    const btn = document.getElementById('downloadPdfBtn');
+    const originalHTML = btn.innerHTML;
+
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF…';
+
+    try {
+        const area = document.getElementById('timetable-export-area');
+
+        // Capture the timetable area as a canvas image
+        const canvas = await html2canvas(area, {
+            scale: 2,                 // 2× for crisp text
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+
+        // Landscape A4: 297 × 210 mm
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+
+        // Scale image to fit the page (with 8 mm margin on each side)
+        const margin = 8;
+        const maxW = pageW - margin * 2;
+        const maxH = pageH - margin * 2;
+        const ratio = Math.min(maxW / canvas.width, maxH / canvas.height);
+        const imgW = canvas.width * ratio;
+        const imgH = canvas.height * ratio;
+
+        // Center on the page
+        const x = (pageW - imgW) / 2;
+        const y = (pageH - imgH) / 2;
+
+        pdf.addImage(imgData, 'PNG', x, y, imgW, imgH);
+
+        // Auto-download
+        const grade   = {{ student.grade_name   | tojson }};
+        const section = {{ student.section_name | tojson }};
+        pdf.save('Timetable_' + grade.replace(/\s+/g, '_') + '_' + section + '.pdf');
+
+    } catch (err) {
+        console.error('PDF generation failed:', err);
+        alert('Could not generate PDF. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+</script>
 {% endblock %}
