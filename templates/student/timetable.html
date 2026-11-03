@@ -2,12 +2,39 @@
 
 {% block title %}My Timetable - SchoolSync{% endblock %}
 
+{% block extra_css %}
+<style>
+@media print {
+    .sidebar, .navbar, .header-actions,
+    .sidebar-toggle-btn, .btn { display: none !important; }
+    .main-container { margin-left: 0 !important; }
+    .main-content { padding: 0 !important; }
+    body { background: white !important; }
+    .timetable-slot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .timetable-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .print-title { display: block !important; }
+}
+.print-title { display: none; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
         <h1>My Timetable</h1>
         <p class="page-subtitle">{{ student.grade_name }} - {{ student.section_name }}</p>
     </div>
+    <div class="header-actions">
+        <button type="button" class="btn btn-outline" onclick="window.print()">
+            <i class="fas fa-print"></i> Print Timetable
+        </button>
+    </div>
+</div>
+
+<!-- School name shown only when printing -->
+<div class="print-title" style="text-align:center; margin-bottom:12px;">
+    <strong>SchoolSync &mdash; Weekly Timetable</strong><br>
+    <span>{{ student.grade_name }} &ndash; {{ student.section_name }}</span>
 </div>
 
 <div class="card">

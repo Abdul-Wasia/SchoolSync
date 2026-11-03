@@ -19,8 +19,9 @@
 {% if grouped_results %}
 {% for subject_name, results in grouped_results.items() %}
 <div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-header" style="background: {{ subjectColor(subject_name) }}; color: white;">
-        <h3>{{ subject_name }}</h3>
+    <div class="subject-result-banner" style="background: {{ subjectColor(subject_name) }}; color: white; padding: 16px 24px; border-radius: 12px 12px 0 0; display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-book" style="font-size: 1.1rem; opacity: 0.85;"></i>
+        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: white !important; letter-spacing: 0.02em;">{{ subject_name }}</h3>
     </div>
     <div class="card-body">
         <div class="table-responsive">
