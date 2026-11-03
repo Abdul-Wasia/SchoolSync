@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Parent & Guardian Communication Hub - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-comments-alt" style="color: #2563eb; margin-right: 8px;"></i> Parent &amp; Guardian Communication Hub</h1>
+        <p class="page-subtitle">Direct institutional communication with parents and guardians via templated WhatsApp alerts without requiring parent logins</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('documents.index') }}" class="btn btn-outline">
+            <i class="fas fa-file-alt"></i> Documents Center
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('documents.parent_communication') }}" class="form-grid" style="align-items: end;">
+            <div class="form-group">
+                <label for="gradeSelect">Grade</label>
+                <select id="gradeSelect" name="grade_id" class="form-control" onchange="this.form.submit()">
+                    {% for g in grades %}
+                    <option value="{{ g.id }}" {% if grade_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sectionSelect">Section</label>
+                <select id="sectionSelect" name="section_id" class="form-control" onchange="this.form.submit()">
+                    {% for s in sections %}
+                    <option value="{{ s.id }}" {% if section_id == s.id %}selected{% endif %}>Section {{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label for="searchInput">Search Student or Father Name</label>
+                <input type="search" id="searchInput" name="q" class="form-control"
+                       value="{{ search_q }}" placeholder="Search by name, roll number, or father name...">
+            </div>
+            <div class="form-group" style="display: flex; gap: 8px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <a href="{{ url_for('documents.parent_communication') }}" class="btn btn-outline">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Student Roster & Communication Triggers -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.1rem;"><i class="fas fa-user-friends"></i> Student &amp; Guardian Roster ({{ students|length }})</h3>
+        <span style="font-size: 0.84rem; color: #64748b;">{{ selected_grade.name }} - Section {{ selected_section.name }}</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if students %}
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>Student &amp; Roll #</th>
+                        <th>Parent / Guardian</th>
+                        <th>Contact Number</th>
+                        <th>Attendance Standing</th>
+                        <th>Fee Status</th>
+                        <th style="text-align: right;">1-Click Quick Alerts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td>
+                            <strong style="color: var(--text-color, #1e293b); display: block; font-size: 0.94rem;">{{ s.name }}</strong>
+                            <span style="font-size: 0.8rem; color: #64748b;">Roll: {{ s.roll_number or 'N/A' }} | {{ s.student_system_id }}</span>
+                        </td>
+                        <td>
+                            <span style="font-weight: 600; color: #334155; font-size: 0.92rem;">{{ s.father_name or 'N/A' }}</span>
+                        </td>
+                        <td>
+                            {% if s.parent_contact %}
+                            <a href="tel:{{ s.parent_contact }}" style="font-family: monospace; font-size: 0.9rem; color: #2563eb; font-weight: 600;">
+                                <i class="fas fa-phone-alt" style="font-size: 0.78rem;"></i> {{ s.parent_contact }}
+                            </a>
+                            {% if s.emergency_contact_phone and s.emergency_contact_phone != s.parent_contact %}
+                            <span style="display: block; font-size: 0.75rem; color: #64748b;">Emerg: {{ s.emergency_contact_phone }}</span>
+                            {% endif %}
+                            {% else %}
+                            <span style="color: #94a3b8; font-size: 0.85rem;">No phone recorded</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if s.attendance_pct is not none and s.att_total > 0 %}
+                            <span class="badge {% if s.attendance_pct >= 75 %}badge-success{% else %}badge-danger{% endif %}"
+                                  style="font-size: 0.82rem; font-weight: 700;">
+                                {{ s.attendance_pct }}%
+                            </span>
+                            <span style="display: block; font-size: 0.75rem; color: #64748b; margin-top: 2px;">{{ s.att_present }}/{{ s.att_total }} days</span>
+                            {% else %}
+                            <span style="color: #94a3b8; font-size: 0.85rem;">No attendance</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if s.fee_status == 'Paid' %}
+                            <span class="badge badge-success"><i class="fas fa-check"></i> Paid</span>
+                            {% elif s.fee_status == 'Unpaid' or s.fee_status == 'Pending' %}
+                            <span class="badge badge-warning" style="background: #fef3c7; color: #92400e;"><i class="fas fa-clock"></i> Due</span>
+                            {% else %}
+                            <span style="color: #94a3b8; font-size: 0.85rem;">-</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            {% if s.parent_contact %}
+                            <div style="display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                                <!-- Absent Alert -->
+                                <a href="{{ s.link_absent }}" target="_blank" class="btn btn-sm"
+                                   style="background: #ef4444; color: #ffffff; padding: 4px 8px; font-size: 0.76rem;"
+                                   title="Send Absent Alert via WhatsApp">
+                                    <i class="fas fa-user-times"></i> Absent
+                                </a>
+
+                                <!-- Fee Reminder -->
+                                <a href="{{ s.link_fee }}" target="_blank" class="btn btn-sm"
+                                   style="background: #f59e0b; color: #ffffff; padding: 4px 8px; font-size: 0.76rem;"
+                                   title="Send Fee Reminder via WhatsApp">
+                                    <i class="fas fa-wallet"></i> Fee Due
+                                </a>
+
+                                <!-- Commendation -->
+                                <a href="{{ s.link_commendation }}" target="_blank" class="btn btn-sm"
+                                   style="background: #10b981; color: #ffffff; padding: 4px 8px; font-size: 0.76rem;"
+                                   title="Send Commendation Praise via WhatsApp">
+                                    <i class="fas fa-award"></i> Praise
+                                </a>
+
+                                {% if s.attendance_pct is not none and s.attendance_pct < 75 and s.att_total > 0 %}
+                                <!-- Attendance Disqualification Warning -->
+                                <a href="{{ s.link_att_warning }}" target="_blank" class="btn btn-sm"
+                                   style="background: #b91c1c; color: #ffffff; padding: 4px 8px; font-size: 0.76rem;"
+                                   title="Attendance Warning (< 75%)">
+                                    <i class="fas fa-exclamation-triangle"></i> Low Att.
+                                </a>
+                                {% endif %}
+
+                                <!-- Custom Direct Chat -->
+                                <a href="{{ wa_link(s.parent_contact) }}" target="_blank" class="btn btn-sm btn-outline"
+                                   style="padding: 4px 8px; font-size: 0.76rem;"
+                                   title="Open Direct WhatsApp Chat">
+                                    <i class="fab fa-whatsapp" style="color: #25d366;"></i> Chat
+                                </a>
+                            </div>
+                            {% else %}
+                            <span style="font-size: 0.8rem; color: #94a3b8;">Phone missing</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1.5rem; color: #64748b;">
+            <i class="fas fa-users" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+            <h4>No Students Found</h4>
+            <p>No active students match the selected grade and section criteria.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

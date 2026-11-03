@@ -141,6 +141,15 @@
                 <a href="{{ url_for('documents.attendance_register') }}" class="slink {% if request.endpoint == 'documents.attendance_register' %}active{% endif %}">
                     <i class="fas fa-table"></i> <span>Attendance Register</span>
                 </a>
+                <a href="{{ url_for('library.catalog') }}" class="slink {% if request.endpoint and request.endpoint.startswith('library.') %}active{% endif %}">
+                    <i class="fas fa-book-reader"></i> <span>School Library</span>
+                </a>
+                <a href="{{ url_for('documents.academic_analytics') }}" class="slink {% if request.endpoint == 'documents.academic_analytics' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i> <span>Academic Analytics</span>
+                </a>
+                <a href="{{ url_for('documents.parent_communication') }}" class="slink {% if request.endpoint == 'documents.parent_communication' %}active{% endif %}">
+                    <i class="fas fa-comments-alt"></i> <span>Parent Hub</span>
+                </a>
                 {% elif session.user_type == 'FA' %}
                 <a href="{{ url_for('fa.dashboard') }}" class="slink {% if request.endpoint == 'fa.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
@@ -187,6 +196,15 @@
                 <a href="{{ url_for('fa.leave_requests') }}" class="slink {% if request.endpoint == 'fa.leave_requests' %}active{% endif %}">
                     <i class="fas fa-envelope-open-text"></i> <span>Leave Requests</span>
                 </a>
+                <a href="{{ url_for('library.catalog') }}" class="slink {% if request.endpoint and request.endpoint.startswith('library.') %}active{% endif %}">
+                    <i class="fas fa-book-reader"></i> <span>School Library</span>
+                </a>
+                <a href="{{ url_for('documents.academic_analytics') }}" class="slink {% if request.endpoint == 'documents.academic_analytics' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i> <span>Academic Analytics</span>
+                </a>
+                <a href="{{ url_for('documents.parent_communication') }}" class="slink {% if request.endpoint == 'documents.parent_communication' %}active{% endif %}">
+                    <i class="fas fa-comments-alt"></i> <span>Parent Hub</span>
+                </a>
                 {% elif session.user_type == 'Teacher' %}
                 <a href="{{ url_for('teacher.dashboard') }}" class="slink {% if request.endpoint == 'teacher.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
@@ -205,6 +223,15 @@
                 </a>
                 <a href="{{ url_for('teacher.leave_requests') }}" class="slink {% if request.endpoint == 'teacher.leave_requests' %}active{% endif %}">
                     <i class="fas fa-envelope-open-text"></i> <span>Leave Requests</span>
+                </a>
+                <a href="{{ url_for('library.catalog') }}" class="slink {% if request.endpoint and request.endpoint.startswith('library.') %}active{% endif %}">
+                    <i class="fas fa-book-reader"></i> <span>School Library</span>
+                </a>
+                <a href="{{ url_for('documents.academic_analytics') }}" class="slink {% if request.endpoint == 'documents.academic_analytics' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i> <span>Academic Analytics</span>
+                </a>
+                <a href="{{ url_for('documents.parent_communication') }}" class="slink {% if request.endpoint == 'documents.parent_communication' %}active{% endif %}">
+                    <i class="fas fa-comments-alt"></i> <span>Parent Hub</span>
                 </a>
                 <a href="{{ url_for('ai.chat_page') }}" class="slink {% if request.endpoint in ['ai.chat_page', 'ai.quiz_page', 'ai.summarizer_page', 'ai.study_planner_page'] %}active{% endif %}">
                     <i class="fas fa-comments"></i> <span>AI Assistant</span>
@@ -252,6 +279,9 @@
                 <a href="{{ url_for('student.exam_schedule') }}" class="slink {% if request.endpoint == 'student.exam_schedule' %}active{% endif %}">
                     <i class="fas fa-calendar-check"></i> <span>Exam Schedule</span>
                 </a>
+                <a href="{{ url_for('library.catalog') }}" class="slink {% if request.endpoint and request.endpoint.startswith('library.') %}active{% endif %}">
+                    <i class="fas fa-book-reader"></i> <span>School Library</span>
+                </a>
                 {% elif session.user_type == 'Principal' %}
                 <a href="{{ url_for('principal.dashboard') }}" class="slink {% if request.endpoint == 'principal.dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
@@ -270,6 +300,15 @@
                 </a>
                 <a href="{{ url_for('documents.attendance_register') }}" class="slink {% if request.endpoint == 'documents.attendance_register' %}active{% endif %}">
                     <i class="fas fa-table"></i> <span>Attendance Register</span>
+                </a>
+                <a href="{{ url_for('library.catalog') }}" class="slink {% if request.endpoint and request.endpoint.startswith('library.') %}active{% endif %}">
+                    <i class="fas fa-book-reader"></i> <span>School Library</span>
+                </a>
+                <a href="{{ url_for('documents.academic_analytics') }}" class="slink {% if request.endpoint == 'documents.academic_analytics' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i> <span>Academic Analytics</span>
+                </a>
+                <a href="{{ url_for('documents.parent_communication') }}" class="slink {% if request.endpoint == 'documents.parent_communication' %}active{% endif %}">
+                    <i class="fas fa-comments-alt"></i> <span>Parent Hub</span>
                 </a>
                 {% elif session.user_type == 'GR_Office' %}
                 <a href="{{ url_for('gr.dashboard') }}" class="slink {% if request.endpoint == 'gr.dashboard' %}active{% endif %}">
@@ -292,6 +331,9 @@
                 </a>
                 <a href="{{ url_for('documents.index') }}" class="slink {% if request.endpoint == 'documents.index' %}active{% endif %}">
                     <i class="fas fa-file-alt"></i> <span>Documents &amp; Certificates</span>
+                </a>
+                <a href="{{ url_for('documents.verify_certificate') }}" class="slink {% if request.endpoint == 'documents.verify_certificate' %}active{% endif %}">
+                    <i class="fas fa-shield-alt"></i> <span>Verify Certificate</span>
                 </a>
                 {% endif %}
             </nav>

@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}School Library - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-book-reader" style="color: #2563eb; margin-right: 8px;"></i> School Library &amp; Learning Resources</h1>
+        <p class="page-subtitle">Search book catalog, manage volume inventory, and track student &amp; teacher circulation</p>
+    </div>
+    <div class="header-actions">
+        {% if session.user_type == 'Student' %}
+        <a href="{{ url_for('library.my_books') }}" class="btn btn-outline">
+            <i class="fas fa-book-open"></i> My Borrowed Books
+            {% if my_active_loans > 0 %}
+            <span class="badge badge-primary" style="margin-left: 6px;">{{ my_active_loans }}</span>
+            {% endif %}
+        </a>
+        {% elif is_staff %}
+        <a href="{{ url_for('library.circulation') }}" class="btn btn-outline">
+            <i class="fas fa-clipboard-list"></i> Circulation Desk &amp; Returns
+        </a>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('addBookModal').style.display='flex'">
+            <i class="fas fa-plus"></i> Add New Book
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('library.catalog') }}" class="form-grid" style="align-items: end;">
+            <div class="form-group" style="flex: 2;">
+                <label for="searchQuery">Search Catalog</label>
+                <div style="position: relative;">
+                    <input type="search" id="searchQuery" name="q" class="form-control"
+                           value="{{ search_q }}" placeholder="Search by title, author, or ISBN...">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="categoryFilter">Category</label>
+                <select name="category" id="categoryFilter" class="form-control">
+                    <option value="">All Categories</option>
+                    {% for c in categories %}
+                    <option value="{{ c.category }}" {% if selected_category == c.category %}selected{% endif %}>{{ c.category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="display: flex; gap: 8px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="fas fa-search"></i> Filter
+                </button>
+                <a href="{{ url_for('library.catalog') }}" class="btn btn-outline">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Books Grid / List -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.1rem;"><i class="fas fa-books"></i> Books Catalog ({{ books|length }} volume{% if books|length != 1 %}s{% endif %})</h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if books %}
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>Title &amp; Author</th>
+                        <th>Category</th>
+                        <th>ISBN</th>
+                        <th>Rack / Shelf</th>
+                        <th>Copies</th>
+                        <th>Availability</th>
+                        {% if is_staff %}
+                        <th style="text-align: right;">Action</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in books %}
+                    <tr>
+                        <td>
+                            <strong style="color: var(--text-color, #1e293b); display: block; font-size: 0.96rem;">{{ b.title }}</strong>
+                            <span style="color: #64748b; font-size: 0.84rem;"><i class="fas fa-user-edit" style="font-size: 0.78rem;"></i> {{ b.author }} {% if b.published_year %}({{ b.published_year }}){% endif %}</span>
+                        </td>
+                        <td>
+                            <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 500;">{{ b.category }}</span>
+                        </td>
+                        <td>
+                            <span style="font-family: monospace; font-size: 0.88rem; color: #475569;">{{ b.isbn or 'N/A' }}</span>
+                        </td>
+                        <td>
+                            <span style="font-size: 0.88rem;"><i class="fas fa-map-marker-alt" style="color: #94a3b8;"></i> {{ b.rack_location or 'Main Stack' }}</span>
+                        </td>
+                        <td>
+                            <span style="font-size: 0.88rem;">{{ b.available_copies }} / {{ b.total_copies }}</span>
+                        </td>
+                        <td>
+                            {% if b.available_copies > 0 %}
+                            <span class="badge badge-success" style="background: #dcfce7; color: #15803d;">
+                                <i class="fas fa-check-circle"></i> Available ({{ b.available_copies }})
+                            </span>
+                            {% else %}
+                            <span class="badge badge-danger" style="background: #fee2e2; color: #b91c1c;">
+                                <i class="fas fa-clock"></i> All Issued
+                            </span>
+                            {% endif %}
+                        </td>
+                        {% if is_staff %}
+                        <td style="text-align: right;">
+                            {% if b.available_copies > 0 %}
+                            <button type="button" class="btn btn-sm btn-primary"
+                                    onclick="openIssueModal({{ b.id }}, '{{ b.title|replace('\'', '\\\'') }}')">
+                                <i class="fas fa-share"></i> Issue
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-sm btn-outline" disabled title="No copies available">
+                                Issued
+                            </button>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1.5rem; color: #64748b;">
+            <i class="fas fa-book" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+            <h4>No Books Found</h4>
+            <p>No volumes match your current search criteria. Try modifying your filter or search query.</p>
+            {% if is_staff %}
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('addBookModal').style.display='flex'">
+                <i class="fas fa-plus"></i> Add First Book
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if is_staff %}
+<!-- Add Book Modal -->
+<div id="addBookModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="max-width: 580px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-book"></i> Add New Book to Library</h3>
+            <button type="button" class="close-btn" onclick="document.getElementById('addBookModal').style.display='none'">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('library.add_book') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="bookTitle">Book Title <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="bookTitle" name="title" class="form-control" required placeholder="e.g. Introduction to Algorithms">
+                </div>
+                <div class="form-grid" style="margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="bookAuthor">Author <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="bookAuthor" name="author" class="form-control" required placeholder="e.g. Thomas H. Cormen">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookCategory">Category / Genre</label>
+                        <input type="text" id="bookCategory" name="category" class="form-control" placeholder="e.g. Computer Science, Mathematics, Literature">
+                    </div>
+                </div>
+                <div class="form-grid" style="margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="bookIsbn">ISBN Code</label>
+                        <input type="text" id="bookIsbn" name="isbn" class="form-control" placeholder="e.g. 978-0262033848">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookRack">Rack / Shelf Location</label>
+                        <input type="text" id="bookRack" name="rack_location" class="form-control" placeholder="e.g. Shelf B-4, Lab Rack 2">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="bookCopies">Total Copies</label>
+                        <input type="number" id="bookCopies" name="total_copies" class="form-control" value="1" min="1" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookYear">Published Year</label>
+                        <input type="number" id="bookYear" name="published_year" class="form-control" placeholder="e.g. 2022">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('addBookModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Book</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Issue Book Modal -->
+<div id="issueBookModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="max-width: 580px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-share"></i> Issue Book Copy</h3>
+            <button type="button" class="close-btn" onclick="document.getElementById('issueBookModal').style.display='none'">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('library.issue_book') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" id="issueBookId" name="book_id" value="">
+            <div class="modal-body">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem;">
+                    <span style="font-size: 0.82rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Selected Book</span>
+                    <div id="issueBookTitleDisplay" style="font-weight: 700; color: #1e293b; font-size: 1rem;"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Borrower Type</label>
+                    <div style="display: flex; gap: 16px; margin-top: 4px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="recipient_type" value="Student" checked onchange="toggleBorrowerSelect(this.value)"> Student
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="recipient_type" value="Teacher" onchange="toggleBorrowerSelect(this.value)"> Teacher / Faculty
+                        </label>
+                    </div>
+                </div>
+
+                <div id="studentSelectGroup" class="form-group" style="margin-bottom: 1rem;">
+                    <label for="issueStudent">Select Student <span style="color: #ef4444;">*</span></label>
+                    <select id="issueStudent" name="student_id" class="form-control">
+                        <option value="">-- Choose Student --</option>
+                        {% for s in students %}
+                        <option value="{{ s.id }}">{{ s.name }} (Roll: {{ s.roll_number or 'N/A' }} | {{ s.grade_name }} - {{ s.section_name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="teacherSelectGroup" class="form-group" style="margin-bottom: 1rem; display: none;">
+                    <label for="issueTeacher">Select Teacher <span style="color: #ef4444;">*</span></label>
+                    <select id="issueTeacher" name="teacher_id" class="form-control">
+                        <option value="">-- Choose Teacher --</option>
+                        {% for t in teachers %}
+                        <option value="{{ t.id }}">{{ t.name }} ({{ t.subject }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-grid" style="margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="issueDueDate">Due Date <span style="color: #ef4444;">*</span></label>
+                        <input type="date" id="issueDueDate" name="due_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="issueNotes">Circulation Note</label>
+                        <input type="text" id="issueNotes" name="notes" class="form-control" placeholder="Optional remark">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('issueBookModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Issue Volume</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openIssueModal(bookId, bookTitle) {
+    document.getElementById('issueBookId').value = bookId;
+    document.getElementById('issueBookTitleDisplay').innerText = bookTitle;
+    
+    // Default due date to 14 days from today
+    var d = new Date();
+    d.setDate(d.getDate() + 14);
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    document.getElementById('issueDueDate').value = yyyy + '-' + mm + '-' + dd;
+    
+    document.getElementById('issueBookModal').style.display = 'flex';
+}
+
+function toggleBorrowerSelect(val) {
+    if (val === 'Student') {
+        document.getElementById('studentSelectGroup').style.display = 'block';
+        document.getElementById('teacherSelectGroup').style.display = 'none';
+    } else {
+        document.getElementById('studentSelectGroup').style.display = 'none';
+        document.getElementById('teacherSelectGroup').style.display = 'block';
+    }
+}
+</script>
+{% endif %}
+
+{% endblock %}
+

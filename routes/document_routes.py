@@ -447,6 +447,8 @@ def certificate(student_id):
                 (cert_number, student_id, cert_type, reason, issued_date, session.get('user_id'))
             )
 
+    verification_url = f"{request.url_root.rstrip('/')}/verify/certificate/{cert_number}"
+
     return render_template(
         'print/certificate.html',
         student=student,
@@ -454,7 +456,8 @@ def certificate(student_id):
         cert_number=cert_number,
         issued_date=issued_date,
         reason=reason,
-        attendance_pct=attendance_pct
+        attendance_pct=attendance_pct,
+        verification_url=verification_url
     )
 
 
@@ -624,4 +627,273 @@ def add_student_conduct(student_id):
 
     flash('Student conduct record logged successfully.', 'success')
     return redirect(url_for('documents.student_conduct', student_id=student_id))
+
+
+# ---------------------------------------------------------------------------
+# 9. Official Certificate Public Verification
+# ---------------------------------------------------------------------------
+@documents_bp.route('/verify/certificate/<path:cert_number>')
+@documents_bp.route('/verify/certificate')
+def verify_certificate(cert_number=None):
+    """Public verification portal for official certificates.
+
+    No authentication required, allowing prospective institutions, universities,
+    employers, and embassies to verify the authenticity of student credentials.
+    """
+    lookup_code = cert_number or request.args.get('cert_number', '').strip()
+
+    cert_data = None
+    if lookup_code:
+        cert_data = query(
+            """SELECT c.*,
+                      s.name as student_name, s.student_system_id, s.father_name,
+                      s.roll_number, s.dob, s.admission_date, s.status as student_status,
+                      g.name as grade_name, sec.name as section_name,
+                      u.username as issued_by_name, u.user_type as issued_by_role
+               FROM student_certificates c
+               JOIN students s ON c.student_id = s.id
+               LEFT JOIN sections sec ON s.section_id = sec.id
+               LEFT JOIN grades g ON sec.grade_id = g.id
+               LEFT JOIN users u ON c.issued_by = u.id
+               WHERE c.certificate_number = %s""",
+            (lookup_code,),
+            fetch_one=True
+        )
+
+    return render_template(
+        'print/certificate_verify.html',
+        cert=cert_data,
+        lookup_code=lookup_code,
+        verified=(cert_data is not None)
+    )
+
+
+# ---------------------------------------------------------------------------
+# 10. Class Academic Performance Analytics & Gradebook Insights
+# ---------------------------------------------------------------------------
+@documents_bp.route('/academic-analytics')
+@login_required(['IT_Admin', 'Principal', 'FA', 'Teacher'])
+def academic_analytics():
+    """Aggregated academic performance analytics and gradebook distribution."""
+    grade_id = request.args.get('grade_id', type=int)
+    section_id = request.args.get('section_id', type=int)
+    subject_id = request.args.get('subject_id', type=int)
+    exam_type = request.args.get('exam_type', '').strip()
+
+    user_type = session.get('user_type')
+    teacher_id = None
+    if user_type == 'Teacher':
+        teacher = query("SELECT id FROM teachers WHERE user_id = %s", (session['user_id'],), fetch_one=True)
+        if teacher:
+            teacher_id = teacher['id']
+
+    # Load available grades
+    grades = query("SELECT id, name FROM grades ORDER BY name", fetch=True) or []
+    if not grade_id and grades:
+        grade_id = grades[0]['id']
+
+    # Load sections for selected grade
+    sections = query("SELECT id, name FROM sections WHERE grade_id = %s ORDER BY name", (grade_id,), fetch=True) or []
+    if not section_id and sections:
+        section_id = sections[0]['id']
+
+    # Load subjects for selected grade
+    if teacher_id:
+        subjects = query(
+            """SELECT DISTINCT sub.id, sub.subject_name
+               FROM subjects sub
+               JOIN subject_teachers st ON sub.id = st.subject_id
+               WHERE sub.grade_id = %s AND st.teacher_id = %s
+               ORDER BY sub.subject_name""",
+            (grade_id, teacher_id),
+            fetch=True
+        ) or []
+    else:
+        subjects = query(
+            "SELECT id, subject_name FROM subjects WHERE grade_id = %s ORDER BY subject_name",
+            (grade_id,),
+            fetch=True
+        ) or []
+
+    if not subject_id and subjects:
+        subject_id = subjects[0]['id']
+
+    # Query student results for this filter
+    sql = """
+        SELECT r.*,
+               s.id as student_id, s.name as student_name, s.roll_number, s.student_system_id,
+               s.parent_contact, sub.subject_name
+        FROM results r
+        JOIN students s ON r.student_id = s.id
+        JOIN subjects sub ON r.subject_id = sub.id
+        WHERE s.section_id = %s AND r.subject_id = %s
+    """
+    params = [section_id, subject_id]
+
+    if exam_type:
+        sql += " AND r.exam_type = %s"
+        params.append(exam_type)
+
+    sql += " ORDER BY r.marks_obtained DESC, s.roll_number ASC"
+
+    records = query(sql, tuple(params), fetch=True) or []
+
+    total_candidates = len(records)
+    class_average = 0.0
+    highest_mark = 0.0
+    lowest_mark = 0.0
+    pass_count = 0
+    fail_count = 0
+
+    grade_counts = {'A+': 0, 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0}
+    at_risk_students = []
+
+    if total_candidates > 0:
+        total_pct = 0.0
+        pct_list = []
+        for r in records:
+            obtained = float(r['marks_obtained'] or 0)
+            total = float(r['total_marks'] or 100)
+            pct = round((obtained / total) * 100, 1) if total > 0 else 0.0
+            r['percentage'] = pct
+            pct_list.append(pct)
+            total_pct += pct
+
+            # Categorize grade
+            g = _grade_for(pct)
+            r['calculated_grade'] = g
+            grade_counts[g] = grade_counts.get(g, 0) + 1
+
+            if pct >= PASS_MARK_PERCENTAGE:
+                r['status'] = 'Pass'
+                pass_count += 1
+            else:
+                r['status'] = 'Fail'
+                fail_count += 1
+                at_risk_students.append(r)
+
+        class_average = round(total_pct / total_candidates, 1)
+        highest_mark = max(pct_list) if pct_list else 0.0
+        lowest_mark = min(pct_list) if pct_list else 0.0
+
+    pass_rate = round((pass_count / total_candidates * 100), 1) if total_candidates > 0 else 0.0
+
+    selected_grade = next((g for g in grades if g['id'] == grade_id), None)
+    selected_section = next((s for s in sections if s['id'] == section_id), None)
+    selected_subject = next((sub for sub in subjects if sub['id'] == subject_id), None)
+
+    return render_template(
+        'analytics/academic.html',
+        grades=grades,
+        sections=sections,
+        subjects=subjects,
+        grade_id=grade_id,
+        section_id=section_id,
+        subject_id=subject_id,
+        exam_type=exam_type,
+        selected_grade=selected_grade,
+        selected_section=selected_section,
+        selected_subject=selected_subject,
+        records=records,
+        total_candidates=total_candidates,
+        class_average=class_average,
+        highest_mark=highest_mark,
+        lowest_mark=lowest_mark,
+        pass_count=pass_count,
+        fail_count=fail_count,
+        pass_rate=pass_rate,
+        grade_counts=grade_counts,
+        at_risk_students=at_risk_students
+    )
+
+
+# ---------------------------------------------------------------------------
+# 11. Centralized Parent & Guardian Communication Hub
+# ---------------------------------------------------------------------------
+@documents_bp.route('/parent-communication')
+@login_required(['IT_Admin', 'Principal', 'FA', 'Teacher'])
+def parent_communication():
+    """Unified communication hub for parents and guardians."""
+    grade_id = request.args.get('grade_id', type=int)
+    section_id = request.args.get('section_id', type=int)
+    search_q = request.args.get('q', '').strip()
+
+    grades = query("SELECT id, name FROM grades ORDER BY name", fetch=True) or []
+    if not grade_id and grades:
+        grade_id = grades[0]['id']
+
+    sections = query("SELECT id, name FROM sections WHERE grade_id = %s ORDER BY name", (grade_id,), fetch=True) or []
+    if not section_id and sections:
+        section_id = sections[0]['id']
+
+    sql = """
+        SELECT s.*,
+               g.name as grade_name, sec.name as section_name,
+               COALESCE(att.total_records, 0) as att_total,
+               COALESCE(att.present_records, 0) as att_present,
+               att.attendance_pct,
+               fee.status as fee_status
+        FROM students s
+        LEFT JOIN sections sec ON s.section_id = sec.id
+        LEFT JOIN grades g ON sec.grade_id = g.id
+        LEFT JOIN (
+            SELECT student_id,
+                   COUNT(*) as total_records,
+                   SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present_records,
+                   ROUND(SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) / COUNT(*) * 100, 1) as attendance_pct
+            FROM attendance
+            GROUP BY student_id
+        ) att ON att.student_id = s.id
+        LEFT JOIN (
+            SELECT student_id, status
+            FROM student_fees
+            ORDER BY id DESC LIMIT 1
+        ) fee ON fee.student_id = s.id
+        WHERE s.section_id = %s AND s.status = 'Active'
+    """
+    params = [section_id]
+
+    if search_q:
+        sql += " AND (s.name LIKE %s OR s.roll_number LIKE %s OR s.father_name LIKE %s)"
+        pattern = f"%{search_q}%"
+        params.extend([pattern, pattern, pattern])
+
+    sql += " ORDER BY s.roll_number ASC, s.name ASC"
+
+    students = query(sql, tuple(params), fetch=True) or []
+
+    # Pre-generate communication links for each student
+    today_str = date.today().strftime('%b %d, %Y')
+    for stu in students:
+        phone = stu.get('parent_contact') or stu.get('emergency_contact_phone') or ''
+        name = stu['name']
+        att_pct = stu.get('attendance_pct') or 0.0
+
+        # Template messages
+        msg_absent = f"Dear Guardian of {name}, this is an official update from SchoolSync Academy that your child was marked ABSENT today ({today_str}). Please contact the school office if this was unexpected."
+        msg_fee = f"Dear Guardian of {name}, this is a gentle reminder that school fee dues for the current term remain pending. Kindly clear the outstanding challan to prevent late fees."
+        msg_commendation = f"Congratulations! We are delighted to inform you that {name} has demonstrated excellent academic performance and exemplary conduct this month at SchoolSync Academy."
+        msg_att_warning = f"URGENT ATTENDANCE ALERT: {name}'s attendance has fallen to {att_pct}%. Immediate improvement is required to fulfill the mandatory 75% examination eligibility criteria."
+
+        stu['link_absent'] = build_whatsapp_link(phone, msg_absent)
+        stu['link_fee'] = build_whatsapp_link(phone, msg_fee)
+        stu['link_commendation'] = build_whatsapp_link(phone, msg_commendation)
+        stu['link_att_warning'] = build_whatsapp_link(phone, msg_att_warning)
+
+    selected_grade = next((g for g in grades if g['id'] == grade_id), None)
+    selected_section = next((s for s in sections if s['id'] == section_id), None)
+
+    return render_template(
+        'communication/parents.html',
+        grades=grades,
+        sections=sections,
+        grade_id=grade_id,
+        section_id=section_id,
+        selected_grade=selected_grade,
+        selected_section=selected_section,
+        search_q=search_q,
+        students=students,
+        today=date.today()
+    )
+
 

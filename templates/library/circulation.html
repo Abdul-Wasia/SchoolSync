@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Library Circulation & Returns - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-clipboard-list" style="color: #2563eb; margin-right: 8px;"></i> Library Circulation Desk</h1>
+        <p class="page-subtitle">Manage issued books, inspect overdue loans, and process volume returns with automated late fine tracking</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('library.catalog') }}" class="btn btn-outline">
+            <i class="fas fa-books"></i> Back to Catalog
+        </a>
+    </div>
+</div>
+
+<!-- Circulation Status Filter Tabs -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 0.75rem 1.25rem;">
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <span style="font-weight: 600; font-size: 0.9rem; color: #64748b; margin-right: 8px;">Filter Records:</span>
+            <a href="{{ url_for('library.circulation', status='Issued') }}"
+               class="btn btn-sm {% if filter_status == 'Issued' %}btn-primary{% else %}btn-outline{% endif %}">
+                <i class="fas fa-clock"></i> Currently Issued / Active
+            </a>
+            <a href="{{ url_for('library.circulation', status='Returned') }}"
+               class="btn btn-sm {% if filter_status == 'Returned' %}btn-primary{% else %}btn-outline{% endif %}">
+                <i class="fas fa-check-circle"></i> Returned History
+            </a>
+            <a href="{{ url_for('library.circulation', status='All') }}"
+               class="btn btn-sm {% if filter_status == 'All' %}btn-primary{% else %}btn-outline{% endif %}">
+                <i class="fas fa-list"></i> All Records
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Circulation Table -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.1rem;"><i class="fas fa-exchange-alt"></i> Circulation Log ({{ issues|length }} record{% if issues|length != 1 %}s{% endif %})</h3>
+        <span style="font-size: 0.84rem; color: #64748b;">Daily overdue fine standard: PKR {{ daily_fine|int }}/day</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if issues %}
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>Book Title &amp; ISBN</th>
+                        <th>Borrower</th>
+                        <th>Issue Date</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Fine Status</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for itm in issues %}
+                    <tr {% if itm.is_overdue %}style="background: #fff5f5;"{% endif %}>
+                        <td>
+                            <strong style="color: var(--text-color, #1e293b); display: block; font-size: 0.96rem;">{{ itm.book_title }}</strong>
+                            <span style="color: #64748b; font-size: 0.82rem;"><i class="fas fa-barcode"></i> {{ itm.isbn or 'No ISBN' }} | Rack: {{ itm.rack_location or 'Main' }}</span>
+                        </td>
+                        <td>
+                            {% if itm.student_name %}
+                            <strong style="display: block; font-size: 0.94rem;">{{ itm.student_name }}</strong>
+                            <span class="badge" style="background: #e2e8f0; color: #334155; font-size: 0.78rem;">
+                                Student | {{ itm.grade_name }}-{{ itm.section_name }} (Roll: {{ itm.roll_number or 'N/A' }})
+                            </span>
+                            {% elif itm.teacher_name %}
+                            <strong style="display: block; font-size: 0.94rem;">{{ itm.teacher_name }}</strong>
+                            <span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.78rem;">
+                                Faculty Member
+                            </span>
+                            {% else %}
+                            <span style="color: #94a3b8;">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span style="font-size: 0.88rem;">{{ itm.issue_date.strftime('%b %d, %Y') if itm.issue_date else '-' }}</span>
+                        </td>
+                        <td>
+                            <span style="font-size: 0.88rem; font-weight: {% if itm.is_overdue %}700; color: #dc2626;{% else %}500;{% endif %}">
+                                {{ itm.due_date.strftime('%b %d, %Y') if itm.due_date else '-' }}
+                            </span>
+                            {% if itm.is_overdue %}
+                            <span class="badge badge-danger" style="display: block; font-size: 0.75rem; margin-top: 2px;">
+                                {{ itm.days_overdue }} day(s) overdue
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if itm.status == 'Issued' %}
+                                {% if itm.is_overdue %}
+                                <span class="badge badge-danger"><i class="fas fa-exclamation-circle"></i> Overdue</span>
+                                {% else %}
+                                <span class="badge badge-warning" style="background: #fef3c7; color: #92400e;"><i class="fas fa-clock"></i> Issued</span>
+                                {% endif %}
+                            {% elif itm.status == 'Returned' %}
+                            <span class="badge badge-success" style="background: #dcfce7; color: #15803d;">
+                                <i class="fas fa-check"></i> Returned ({{ itm.return_date.strftime('%b %d') if itm.return_date else '' }})
+                            </span>
+                            {% else %}
+                            <span class="badge badge-secondary">{{ itm.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if itm.calculated_fine > 0 %}
+                            <span style="font-weight: 700; color: #b91c1c; font-size: 0.9rem;">PKR {{ "%.2f"|format(itm.calculated_fine) }}</span>
+                            {% else %}
+                            <span style="color: #15803d; font-size: 0.88rem;">Nil</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            {% if itm.status == 'Issued' %}
+                            <form method="POST" action="{{ url_for('library.return_book', issue_id=itm.id) }}" style="display: inline-block;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="fine_amount" value="{{ itm.calculated_fine }}">
+                                <button type="submit" class="btn btn-sm btn-primary"
+                                        onclick="return confirm('Confirm return for {{ itm.book_title|replace('\'', '\\\'') }}? {% if itm.calculated_fine > 0 %}Calculated fine: PKR {{ itm.calculated_fine }}{% endif %}');">
+                                    <i class="fas fa-undo"></i> Mark Returned
+                                </button>
+                            </form>
+                            {% else %}
+                            <span style="font-size: 0.82rem; color: #64748b;">Completed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1.5rem; color: #64748b;">
+            <i class="fas fa-clipboard-check" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+            <h4>No Circulation Records</h4>
+            <p>There are no book issues matching this filter criteria.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

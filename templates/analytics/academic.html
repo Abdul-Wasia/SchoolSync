@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Academic Performance Analytics - SchoolSync{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-chart-line" style="color: #2563eb; margin-right: 8px;"></i> Subject Performance Analytics &amp; Gradebook Insights</h1>
+        <p class="page-subtitle">Class-wide score distributions, subject averages, grade distributions, and early detection of at-risk students</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('documents.index') }}" class="btn btn-outline">
+            <i class="fas fa-file-alt"></i> Documents Center
+        </a>
+    </div>
+</div>
+
+<!-- Filters Card -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('documents.academic_analytics') }}" class="form-grid" style="align-items: end;">
+            <div class="form-group">
+                <label for="gradeSelect">Grade</label>
+                <select id="gradeSelect" name="grade_id" class="form-control" onchange="this.form.submit()">
+                    {% for g in grades %}
+                    <option value="{{ g.id }}" {% if grade_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sectionSelect">Section</label>
+                <select id="sectionSelect" name="section_id" class="form-control" onchange="this.form.submit()">
+                    {% for s in sections %}
+                    <option value="{{ s.id }}" {% if section_id == s.id %}selected{% endif %}>Section {{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="subjectSelect">Subject</label>
+                <select id="subjectSelect" name="subject_id" class="form-control" onchange="this.form.submit()">
+                    {% for sub in subjects %}
+                    <option value="{{ sub.id }}" {% if subject_id == sub.id %}selected{% endif %}>{{ sub.subject_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="examTypeSelect">Exam Type</label>
+                <select id="examTypeSelect" name="exam_type" class="form-control" onchange="this.form.submit()">
+                    <option value="">All Assessments</option>
+                    <option value="Quiz" {% if exam_type == 'Quiz' %}selected{% endif %}>Quiz</option>
+                    <option value="Assignment" {% if exam_type == 'Assignment' %}selected{% endif %}>Assignment</option>
+                    <option value="Mid-Term" {% if exam_type == 'Mid-Term' %}selected{% endif %}>Mid-Term</option>
+                    <option value="Final-Term" {% if exam_type == 'Final-Term' %}selected{% endif %}>Final-Term</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-filter"></i> Apply Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if total_candidates > 0 %}
+<!-- KPI Metrics Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+    <div class="card" style="margin-bottom: 0;">
+        <div class="card-body" style="padding: 1.25rem;">
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Class Average</div>
+            <div style="font-size: 1.75rem; font-weight: 800; color: #2563eb; margin: 4px 0;">{{ class_average }}%</div>
+            <div style="font-size: 0.82rem; color: #64748b;">Across {{ total_candidates }} evaluation(s)</div>
+        </div>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <div class="card-body" style="padding: 1.25rem;">
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Pass Rate</div>
+            <div style="font-size: 1.75rem; font-weight: 800; color: {% if pass_rate >= 80 %}#15803d{% elif pass_rate >= 50 %}#d97706{% else %}#b91c1c{% endif %}; margin: 4px 0;">
+                {{ pass_rate }}%
+            </div>
+            <div style="font-size: 0.82rem; color: #64748b;">{{ pass_count }} Passed / {{ fail_count }} Failed</div>
+        </div>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <div class="card-body" style="padding: 1.25rem;">
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Highest Score</div>
+            <div style="font-size: 1.75rem; font-weight: 800; color: #16a34a; margin: 4px 0;">{{ highest_mark }}%</div>
+            <div style="font-size: 0.82rem; color: #64748b;">Top performance in class</div>
+        </div>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <div class="card-body" style="padding: 1.25rem;">
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Lowest Score</div>
+            <div style="font-size: 1.75rem; font-weight: 800; color: {% if lowest_mark < 40 %}#dc2626{% else %}#475569{% endif %}; margin: 4px 0;">
+                {{ lowest_mark }}%
+            </div>
+            <div style="font-size: 0.82rem; color: #64748b;">Minimum score recorded</div>
+        </div>
+    </div>
+</div>
+
+<!-- Grade Distribution & At-Risk Section -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+    <!-- Chart Card -->
+    <div class="card" style="margin-bottom: 0;">
+        <div class="card-header">
+            <h3 style="margin: 0; font-size: 1.05rem;"><i class="fas fa-chart-bar"></i> Letter Grade Distribution</h3>
+        </div>
+        <div class="card-body" style="height: 280px; position: relative;">
+            <canvas id="gradeDistributionChart"></canvas>
+        </div>
+    </div>
+
+    <!-- At-Risk Alert & Intervention Card -->
+    <div class="card" style="margin-bottom: 0;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.05rem; color: #b91c1c;">
+                <i class="fas fa-exclamation-triangle"></i> Students Needing Academic Support ({{ at_risk_students|length }})
+            </h3>
+        </div>
+        <div class="card-body" style="max-height: 280px; overflow-y: auto;">
+            {% if at_risk_students %}
+            <p style="font-size: 0.86rem; color: #64748b; margin-bottom: 0.75rem;">
+                The following students scored below the 40% passing benchmark and require targeted pedagogical intervention:
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% for stu in at_risk_students %}
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 0.6rem 0.85rem;">
+                    <div>
+                        <strong style="color: #9f1239; font-size: 0.92rem;">{{ stu.student_name }}</strong>
+                        <span style="font-size: 0.8rem; color: #64748b; display: block;">Roll: {{ stu.roll_number or 'N/A' }} | Score: {{ stu.percentage }}%</span>
+                    </div>
+                    {% if stu.parent_contact %}
+                    <a href="{{ wa_link(stu.parent_contact, 'Dear Guardian, this is an update from SchoolSync regarding ' ~ stu.student_name ~ '. They require academic assistance in ' ~ stu.subject_name ~ '.') }}"
+                       target="_blank" class="btn btn-sm" style="background: #25d366; color: #ffffff; padding: 4px 10px; font-size: 0.78rem;">
+                        <i class="fab fa-whatsapp"></i> Alert Parent
+                    </a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 2.5rem 1rem; color: #15803d;">
+                <i class="fas fa-check-circle" style="font-size: 2.5rem; margin-bottom: 0.5rem; color: #86efac;"></i>
+                <h4 style="color: #15803d;">All Students Passed</h4>
+                <p style="font-size: 0.86rem; color: #166534; margin: 0;">100% of assessed candidates met or exceeded the 40% passing threshold.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Score Table -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.1rem;"><i class="fas fa-list-ol"></i> Student Assessment Roster</h3>
+        <span style="font-size: 0.84rem; color: #64748b;">{{ selected_grade.name }} - Section {{ selected_section.name }} &bull; {{ selected_subject.subject_name }}</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Student Name &amp; System ID</th>
+                        <th>Roll No</th>
+                        <th>Exam Type</th>
+                        <th>Marks Obtained</th>
+                        <th>Percentage</th>
+                        <th>Grade</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr {% if r.status == 'Fail' %}style="background: #fff5f5;"{% endif %}>
+                        <td><strong>#{{ loop.index }}</strong></td>
+                        <td>
+                            <strong style="color: var(--text-color, #1e293b); display: block; font-size: 0.94rem;">{{ r.student_name }}</strong>
+                            <span style="font-family: monospace; font-size: 0.8rem; color: #64748b;">{{ r.student_system_id }}</span>
+                        </td>
+                        <td>{{ r.roll_number or 'N/A' }}</td>
+                        <td><span class="badge" style="background: #f1f5f9; color: #334155;">{{ r.exam_type }}</span></td>
+                        <td><strong>{{ r.marks_obtained }}</strong> / {{ r.total_marks }}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="flex: 1; min-width: 60px; height: 6px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
+                                    <div style="height: 100%; width: {{ r.percentage }}%; background: {% if r.percentage >= 80 %}#22c55e{% elif r.percentage >= 60 %}#3b82f6{% elif r.percentage >= 40 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+                                </div>
+                                <span style="font-weight: 700; font-size: 0.88rem;">{{ r.percentage }}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge" style="background: {% if r.calculated_grade in ['A+', 'A'] %}#dcfce7; color: #15803d;{% elif r.calculated_grade == 'B' %}#dbeafe; color: #1e40af;{% elif r.calculated_grade == 'C' %}#fef3c7; color: #92400e;{% elif r.calculated_grade == 'D' %}#ffedd5; color: #9a3412;{% else %}#fee2e2; color: #b91c1c;{% endif %}; font-weight: 700;">
+                                {{ r.calculated_grade }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if r.status == 'Pass' %}
+                            <span class="badge badge-success"><i class="fas fa-check"></i> Pass</span>
+                            {% else %}
+                            <span class="badge badge-danger"><i class="fas fa-times"></i> Fail</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var ctx = document.getElementById('gradeDistributionChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['A+ (90-100%)', 'A (80-89%)', 'B (70-79%)', 'C (60-69%)', 'D (50-59%)', 'F (<50%)'],
+                datasets: [{
+                    label: 'Students Count',
+                    data: [
+                        {{ grade_counts.get('A+', 0) }},
+                        {{ grade_counts.get('A', 0) }},
+                        {{ grade_counts.get('B', 0) }},
+                        {{ grade_counts.get('C', 0) }},
+                        {{ grade_counts.get('D', 0) }},
+                        {{ grade_counts.get('F', 0) }}
+                    ],
+                    backgroundColor: [
+                        '#16a34a',
+                        '#22c55e',
+                        '#3b82f6',
+                        '#eab308',
+                        '#f97316',
+                        '#ef4444'
+                    ],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, precision: 0 }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+});
+</script>
+
+{% else %}
+<div class="card">
+    <div class="card-body" style="text-align: center; padding: 4rem 1.5rem; color: #64748b;">
+        <i class="fas fa-chart-pie" style="font-size: 3.5rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+        <h4>No Assessment Results Found</h4>
+        <p>No examination marks have been recorded for the selected Grade, Section, and Subject criteria.</p>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+

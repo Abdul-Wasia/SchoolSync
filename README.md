@@ -44,6 +44,10 @@ SchoolSync helps schools manage:
 - Class Monthly Attendance Register (Master Sheet 1–31 grid with summary statistics)
 - Student Emergency Contact & Medical Health Profile tracking
 - Student Conduct, Commendations, and Pastoral Incident Log
+- School Library & Resource Center: book catalog, shelf tracking, book circulation desk, overdue tracking, and automated late fines
+- Official Certificate Public Verification: tamper-proof online verification portal with scannable dynamic QR codes on printed certificates
+- Class Academic Performance Analytics: class score averages, pass rates, letter grade distribution charts, and at-risk student intervention detection
+- Centralized Parent & Guardian Communication Hub: 1-click templated WhatsApp notifications (absenteeism, fee reminders, commendations, warnings) without requiring parent login accounts
 
 ### Admissions Portal
 - Public admission form for applicants
@@ -89,6 +93,8 @@ SchoolSync/
 │   ├── principal_routes.py
 │   ├── gr_routes.py
 │   ├── admission_routes.py
+│   ├── library_routes.py
+│   ├── document_routes.py
 │   └── ai_routes.py
 ├── security/
 ├── static/
@@ -222,9 +228,12 @@ Each role has a dedicated dashboard and access permissions.
 - Keep uploaded files in the private instance directory.
 - Do not expose protected upload paths directly through the web server.
 
-### Admissions Workflow
-- The admissions system uses the migration file in `database/migrations/002_admission_portal.sql`.
-- Ensure the required base tables exist before using the admissions portal.
+### Database Migrations
+- `001_submission_feedback.sql`: Teacher submission feedback column.
+- `002_admission_portal.sql`: Public applicant intake portal and GR Office review workflow.
+- `003_realworld_enhancements.sql`: School events, academic calendar, conduct logs, and emergency contact details.
+- `004_library_system.sql`: Library catalog (`library_books`) and circulation desk tracking (`library_issues`).
+- All migrations are automatically and safely applied on startup via `ensure_schema()` in `app.py` in an additive, non-breaking manner.
 
 ### AI Material Support
 The AI assistant reads uploaded academic content including:

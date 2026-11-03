@@ -320,7 +320,31 @@
             <div class="sign-title">SchoolSync Academy</div>
         </div>
     </div>
+
+    <!-- Official QR-based Verification Block -->
+    <div style="margin-top: 1.5rem; padding-top: 0.85rem; border-top: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-size: 0.74rem; color: #64748b; font-family: sans-serif; line-height: 1.4; text-align: left;">
+            <strong style="color: #1e3a8a; text-transform: uppercase;">Tamper-Proof Digital Verification:</strong><br>
+            Scan this official QR code or navigate to: <span style="font-family: monospace; color: #1e3a8a; font-weight: 700;">{{ verification_url }}</span><br>
+            to confirm authenticity on the SchoolSync Academic Registry.
+        </div>
+        <div id="cert-qrcode" style="width: 68px; height: 68px; padding: 2px; border: 1px solid #cbd5e1; background: #ffffff; flex-shrink: 0;"></div>
+    </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    if (document.getElementById('cert-qrcode')) {
+        new QRCode(document.getElementById('cert-qrcode'), {
+            text: '{{ verification_url }}',
+            width: 64,
+            height: 64,
+            colorDark: '#1e3a8a',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    }
+</script>
 
 </body>
 </html>

@@ -8,9 +8,18 @@
         <h1>Documents Center</h1>
         <p class="page-subtitle">Generate printable report cards, official certificates, fee challans, and attendance master registers</p>
     </div>
-    <div class="header-actions">
+    <div class="header-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <a href="{{ url_for('documents.academic_analytics') }}" class="btn btn-outline">
+            <i class="fas fa-chart-line"></i> Academic Analytics
+        </a>
+        <a href="{{ url_for('documents.parent_communication') }}" class="btn btn-outline">
+            <i class="fas fa-comments-alt"></i> Parent Hub
+        </a>
         <a href="{{ url_for('documents.attendance_register') }}" class="btn btn-outline">
-            <i class="fas fa-table"></i> Monthly Attendance Register
+            <i class="fas fa-table"></i> Attendance Register
+        </a>
+        <a href="{{ url_for('documents.verify_certificate') }}" class="btn btn-outline">
+            <i class="fas fa-shield-alt"></i> Verify Certificate
         </a>
     </div>
 </div>

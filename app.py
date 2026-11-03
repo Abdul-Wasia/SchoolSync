@@ -22,6 +22,7 @@ from routes.ai_routes import ai_bp
 from routes.document_routes import documents_bp, build_whatsapp_link
 from routes.notice_routes import notice_bp
 from routes.calendar_routes import calendar_bp
+from routes.library_routes import library_bp
 from security.csrf import get_csrf_token, protect_state_changing_request
 
 app = Flask(__name__)
@@ -129,6 +130,18 @@ def ensure_schema():
             if statement.strip():
                 query(statement.strip())
 
+    # Apply 004 library system migration
+    mig_004_path = Path(__file__).resolve().parent / 'database' / 'migrations' / '004_library_system.sql'
+    if mig_004_path.exists():
+        mig_004_sql = mig_004_path.read_text(encoding='utf-8')
+        mig_004_sql = '\n'.join(
+            line for line in mig_004_sql.splitlines()
+            if not line.lstrip().startswith('--')
+        )
+        for statement in mig_004_sql.split(';'):
+            if statement.strip():
+                query(statement.strip())
+
     # Add emergency and health columns to students if missing
     student_cols = [
         ('blood_group', 'VARCHAR(10) NULL AFTER gender'),
@@ -165,6 +178,7 @@ app.register_blueprint(ai_bp)
 app.register_blueprint(documents_bp)
 app.register_blueprint(notice_bp)
 app.register_blueprint(calendar_bp)
+app.register_blueprint(library_bp)
 
 @app.template_filter('format_time')
 def template_format_time(val):
