@@ -25,6 +25,15 @@
     font-size: 0.9rem;
     color: #64748b;
 }
+/* Keep teacher / time / room on separate lines so nothing is clipped in the PDF */
+#timetable-export-area .timetable-slot {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    overflow: hidden;
+}
+#timetable-export-area .timetable-slot small {
+    display: block;
+}
 </style>
 {% endblock %}
 
@@ -99,33 +108,55 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- html2canvas + jsPDF (loaded from CDN) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
-        integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-        integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfYWhBAScAjjRNQ=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- html2canvas + jsPDF (served locally so the export works offline) -->
+<script src="{{ url_for('static', filename='js/vendor/html2canvas.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/jspdf.umd.min.js') }}"></script>
 
 <script>
 async function downloadTimetablePDF() {
     const btn = document.getElementById('downloadPdfBtn');
     const originalHTML = btn.innerHTML;
 
+    if (typeof html2canvas !== 'function' || !window.jspdf || !window.jspdf.jsPDF) {
+        alert('PDF tools could not be loaded. Please refresh the page and try again.');
+        return;
+    }
+
     // Show loading state
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF…';
 
-    try {
-        const area = document.getElementById('timetable-export-area');
+    const area = document.getElementById('timetable-export-area');
+    const grid = area ? area.querySelector('.timetable-grid') : null;
+    const previousGridOverflow = grid ? grid.style.overflow : '';
+    const previousScrollY = window.scrollY;
 
-        // Capture the timetable area as a canvas image
+    try {
+        // Make sure web fonts are ready so text is not captured with fallback metrics
+        if (document.fonts && document.fonts.ready) {
+            try { await document.fonts.ready; } catch (e) { /* ignore */ }
+        }
+
+        // Capture from the top of the page, with the grid fully expanded
+        window.scrollTo(0, 0);
+        if (grid) grid.style.overflow = 'visible';
+
+        // Capture the timetable area as a canvas image. A virtual viewport of at
+        // least 1400px keeps every weekday column visible, even on small screens.
         const canvas = await html2canvas(area, {
             scale: 2,                 // 2× for crisp text
             useCORS: true,
             backgroundColor: '#ffffff',
-            logging: false
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: Math.max(1400, document.documentElement.clientWidth),
+            windowHeight: Math.max(900, document.documentElement.clientHeight)
         });
+
+        if (!canvas || !canvas.width || !canvas.height) {
+            throw new Error('The timetable could not be rendered to a canvas.');
+        }
 
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
@@ -147,17 +178,19 @@ async function downloadTimetablePDF() {
         const x = (pageW - imgW) / 2;
         const y = (pageH - imgH) / 2;
 
-        pdf.addImage(imgData, 'PNG', x, y, imgW, imgH);
+        pdf.addImage(imgData, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
 
         // Auto-download
         const grade   = {{ student.grade_name   | tojson }};
         const section = {{ student.section_name | tojson }};
-        pdf.save('Timetable_' + grade.replace(/\s+/g, '_') + '_' + section + '.pdf');
+        pdf.save('Timetable_' + String(grade).replace(/\s+/g, '_') + '_' + section + '.pdf');
 
     } catch (err) {
         console.error('PDF generation failed:', err);
         alert('Could not generate PDF. Please try again.');
     } finally {
+        if (grid) grid.style.overflow = previousGridOverflow;
+        window.scrollTo(0, previousScrollY);
         btn.disabled = false;
         btn.innerHTML = originalHTML;
     }

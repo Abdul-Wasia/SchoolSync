@@ -329,9 +329,6 @@
                 <a href="{{ url_for('admission.gr_admissions') }}" class="slink {% if request.endpoint and request.endpoint.startswith('admission.gr_') %}active{% endif %}">
                     <i class="fas fa-file-signature"></i> <span>Admissions</span>
                 </a>
-                <a href="{{ url_for('documents.index') }}" class="slink {% if request.endpoint == 'documents.index' %}active{% endif %}">
-                    <i class="fas fa-file-alt"></i> <span>Documents &amp; Certificates</span>
-                </a>
                 <a href="{{ url_for('documents.verify_certificate') }}" class="slink {% if request.endpoint == 'documents.verify_certificate' %}active{% endif %}">
                     <i class="fas fa-shield-alt"></i> <span>Verify Certificate</span>
                 </a>

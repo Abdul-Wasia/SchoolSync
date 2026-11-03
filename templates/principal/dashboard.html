@@ -164,6 +164,10 @@
     }
     .principal-chart-wrap { position: relative; min-height: 300px; }
     .principal-empty { color: var(--muted); font-size: 13px; padding: 10px 0; }
+
+    #timetableContent { transition: opacity .15s ease; }
+    #timetableContent.is-loading { opacity: .45; pointer-events: none; }
+    .section-picker a.is-loading { opacity: .6; pointer-events: none; }
 </style>
 {% endblock %}
 
@@ -247,22 +251,22 @@
 <!-- Tabs -->
 <div id="principalTabs">
     <div class="tab-bar">
-        <button class="tab-btn active" onclick="showTab('overviewTab', this)">
+        <button class="tab-btn active" data-tab-target="overviewTab" onclick="showTab('overviewTab', this)">
             <i class="fas fa-school"></i> Overview
         </button>
-        <button class="tab-btn" onclick="showTab('classesTab', this)">
+        <button class="tab-btn" data-tab-target="classesTab" onclick="showTab('classesTab', this)">
             <i class="fas fa-book-open"></i> Classes &amp; Subjects
         </button>
-        <button class="tab-btn" onclick="showTab('timetableTab', this)">
+        <button class="tab-btn" data-tab-target="timetableTab" onclick="showTab('timetableTab', this)">
             <i class="fas fa-calendar-alt"></i> Weekly Timetable
         </button>
-        <button class="tab-btn" onclick="showTab('attendanceTab', this)">
+        <button class="tab-btn" data-tab-target="attendanceTab" onclick="showTab('attendanceTab', this)">
             <i class="fas fa-clipboard-check"></i> Attendance
         </button>
-        <button class="tab-btn" onclick="showTab('teachersTab', this)">
+        <button class="tab-btn" data-tab-target="teachersTab" onclick="showTab('teachersTab', this)">
             <i class="fas fa-chalkboard-teacher"></i> Teachers
         </button>
-        <button class="tab-btn" onclick="showTab('studentsTab', this)">
+        <button class="tab-btn" data-tab-target="studentsTab" onclick="showTab('studentsTab', this)">
             <i class="fas fa-user-graduate"></i> Students
         </button>
     </div>
@@ -376,20 +380,21 @@
             <div class="card-header">
                 <h3><i class="fas fa-calendar-alt"></i> Weekly Timetable</h3>
                 {% if selected_section %}
-                <span class="badge badge-primary">{{ selected_section.grade_name }} &ndash; {{ selected_section.section_name }}</span>
+                <span class="badge badge-primary" id="timetableSectionBadge">{{ selected_section.grade_name }} &ndash; {{ selected_section.section_name }}</span>
                 {% endif %}
             </div>
             <div class="card-body">
-                <div class="section-picker">
+                <div class="section-picker" id="sectionPicker">
                     {% for section in timetable_sections %}
                     <a href="{{ url_for('principal.dashboard', section_id=section.id) }}#timetableTab"
                        class="{% if section.id == selected_section_id %}active{% endif %}"
-                       onclick="event.preventDefault(); window.location.href='{{ url_for('principal.dashboard', section_id=section.id) }}';">
+                       data-section-id="{{ section.id }}">
                         {{ section.label }}
                     </a>
                     {% endfor %}
                 </div>
 
+                <div id="timetableContent">
                 {% if weekly %}
                 <div class="principal-timetable-wrap">
                     <div class="principal-timetable">
@@ -422,6 +427,7 @@
                     <p>No timetable configured for this section</p>
                 </div>
                 {% endif %}
+                </div>
             </div>
         </div>
 
@@ -788,7 +794,65 @@
 
 {% block extra_js %}
 <script>
+// Open the tab referenced in the URL (e.g. /principal/dashboard?section_id=3#timetableTab)
+function activateTabFromHash() {
+    var tabId = (window.location.hash || '').replace('#', '');
+    if (!tabId) return;
+    var btn = document.querySelector('.tab-btn[data-tab-target="' + tabId + '"]');
+    if (btn) showTab(tabId, btn);
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    activateTabFromHash();
+
+    // Section picker: load the chosen class timetable in place instead of
+    // reloading the dashboard and dropping the user back on the Overview tab.
+    var picker = document.getElementById('sectionPicker');
+    var timetableContent = document.getElementById('timetableContent');
+    if (picker && timetableContent) {
+        picker.addEventListener('click', function (event) {
+            var link = event.target.closest('a[data-section-id]');
+            if (!link) return;
+            event.preventDefault();
+
+            if (link.classList.contains('active')) return;
+
+            var sectionUrl = link.href.split('#')[0];
+            var badge = document.getElementById('timetableSectionBadge');
+
+            picker.querySelectorAll('a').forEach(function (a) {
+                a.classList.remove('active', 'is-loading');
+            });
+            link.classList.add('active', 'is-loading');
+            timetableContent.classList.add('is-loading');
+
+            fetch(sectionUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Could not load timetable');
+                    return response.text();
+                })
+                .then(function (html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var freshContent = doc.getElementById('timetableContent');
+                    if (!freshContent) throw new Error('Timetable content missing');
+                    timetableContent.innerHTML = freshContent.innerHTML;
+
+                    var freshBadge = doc.getElementById('timetableSectionBadge');
+                    if (badge && freshBadge) badge.textContent = freshBadge.textContent.trim();
+
+                    history.replaceState(null, '', sectionUrl + '#timetableTab');
+                })
+                .catch(function () {
+                    // If the in-place load fails, fall back to normal navigation.
+                    window.location.href = sectionUrl + '#timetableTab';
+                })
+                .finally(function () {
+                    link.classList.remove('is-loading');
+                    timetableContent.classList.remove('is-loading');
+                });
+        });
+    }
+
     var trendCanvas = document.getElementById('attendanceTrendChart');
     if (trendCanvas) {
         new Chart(trendCanvas, {
@@ -864,5 +928,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+window.addEventListener('hashchange', activateTabFromHash);
 </script>
 {% endblock %}

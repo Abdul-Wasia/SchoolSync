@@ -125,11 +125,6 @@ body {
 .slink { color: #94A3B8; }
 .slink:hover { color: #E2E8F0; }
 .info-table td { color: var(--text) !important; }
-.action-btn {
-    background: var(--card) !important;
-    border-color: var(--border) !important;
-    color: var(--text) !important;
-}
 .empty-state { color: var(--text-muted) !important; }
 select.form-control option {
     background: var(--input-bg);
@@ -1660,37 +1655,106 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .progress-fill.amber { background: var(--warning); }
 .progress-fill.red { background: var(--danger); }
 
-/* ===== ACTION GRID ===== */
+/* ===== ACTION GRID (Quick Actions) ===== */
 .action-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
 }
 
+.action-btn,
 .action-item {
+    --action-color: var(--primary);
+    --action-tint: rgba(37, 99, 235, 0.12);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 16px 12px;
+    justify-content: center;
+    gap: 12px;
+    min-height: 112px;
+    padding: 18px 14px;
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    text-decoration: none;
+    border-radius: 14px;
     color: var(--text-secondary);
-    transition: var(--transition);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
+    line-height: 1.3;
     text-align: center;
+    text-decoration: none;
+    transition: var(--transition);
 }
 
-.action-item:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    background: #EFF6FF;
+.action-btn i,
+.action-item i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--action-tint);
+    color: var(--action-color);
+    font-size: 1.1rem;
+    transition: var(--transition);
 }
 
-.action-item i { font-size: 1.5rem; color: var(--primary); }
+.action-btn:hover,
+.action-btn:focus-visible,
+.action-item:hover,
+.action-item:focus-visible {
+    border-color: var(--action-color);
+    color: var(--action-color);
+    text-decoration: none;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -8px rgba(15, 23, 42, 0.28);
+}
+
+.action-btn:hover i,
+.action-btn:focus-visible i,
+.action-item:hover i,
+.action-item:focus-visible i {
+    background: var(--action-color);
+    color: #fff;
+}
+
+.action-btn:focus-visible,
+.action-item:focus-visible {
+    outline: 2px solid var(--action-color);
+    outline-offset: 2px;
+}
+
+/* A different accent colour per tile keeps the row lively but consistent */
+.action-grid .action-btn:nth-child(6n+1),
+.action-grid .action-item:nth-child(6n+1) {
+    --action-color: #2563EB;
+    --action-tint: rgba(37, 99, 235, 0.12);
+}
+.action-grid .action-btn:nth-child(6n+2),
+.action-grid .action-item:nth-child(6n+2) {
+    --action-color: #16A34A;
+    --action-tint: rgba(22, 163, 74, 0.12);
+}
+.action-grid .action-btn:nth-child(6n+3),
+.action-grid .action-item:nth-child(6n+3) {
+    --action-color: #EA580C;
+    --action-tint: rgba(234, 88, 12, 0.12);
+}
+.action-grid .action-btn:nth-child(6n+4),
+.action-grid .action-item:nth-child(6n+4) {
+    --action-color: #7C3AED;
+    --action-tint: rgba(124, 58, 237, 0.12);
+}
+.action-grid .action-btn:nth-child(6n+5),
+.action-grid .action-item:nth-child(6n+5) {
+    --action-color: #0891B2;
+    --action-tint: rgba(8, 145, 178, 0.12);
+}
+.action-grid .action-btn:nth-child(6n+6),
+.action-grid .action-item:nth-child(6n+6) {
+    --action-color: #DB2777;
+    --action-tint: rgba(219, 39, 119, 0.12);
+}
 
 /* ===== OTP INPUTS ===== */
 .otp-inputs {
