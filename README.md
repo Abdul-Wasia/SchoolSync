@@ -208,6 +208,38 @@ Each teacher is assigned the subjects and sections they actually teach, so their
 dashboard shows the matching classes, timetable and attendance. Student accounts are
 spread across all eight sections.
 
+## Deploying on a Free Host
+
+The included `render.yaml` configures a free Render web service. After deployment,
+Render provides a public `*.onrender.com` URL that can be opened from any city.
+Free web services may sleep when idle, so the first visit after a quiet period can
+take a little longer.
+
+This application also needs a **publicly reachable MySQL-compatible database**;
+the MySQL server on your own computer cannot be used by Render. Choose a database
+provider that offers a free plan, create a database, and import
+`database/schema.sql` into it before the first deployment. Keep its hostname,
+username, password, and database name available.
+
+1. Push this project to a GitHub repository.
+2. In Render, choose **New → Blueprint** and connect that repository.
+3. Review the `schoolsync` web service and enter the database values requested by
+   the Blueprint (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME`). Render
+   generates a production `SECRET_KEY`; leave `DEBUG` set to `False`.
+4. Deploy, then use the public URL shown on the Render service page.
+
+Do not put database credentials or API keys in the repository. Add optional AI
+provider keys (such as `GEMINI_API_KEY` or `OPENROUTER_API_KEY`) through the
+service's environment settings if those features are needed.
+
+**Free-tier limitations:** Render's free service has an ephemeral filesystem.
+Files uploaded by users (admission documents, assignments, and course materials)
+may disappear when the service restarts or redeploys. The app's file uploads are
+not made persistent by this configuration; do not rely on free hosting for
+important school records unless you also configure persistent/object storage.
+Free database quotas and availability depend on the database provider. Use
+non-sensitive demo data until you have verified both services and backups.
+
 ## Default Roles
 
 The project includes these user roles:
@@ -269,4 +301,3 @@ Please check routes/ai_routes.py and the AI assistant module to ensure:
 - The keys are properly loaded via python-dotenv.
 - The AI chatbot feature is working correctly using either Gemini or OpenRouter.
 - Existing database schema, authentication, and core routes remain unchanged."
-
